@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GMI Racing - Physics Stress Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #1a1a1a;
+      color: #00ff00;
+      padding: 20px;
+      margin: 0;
+    }
+    #game-container {
+      border: 2px solid #00ff00;
+      margin-bottom: 20px;
+    }
+    #log-output {
+      background: #000;
+      padding: 15px;
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #333;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+    .warning { color: #ffff00; }
+    .error { color: #ff4444; }
+    .info { color: #00ffff; }
+    button {
+      background: #00ff00;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-family: monospace;
+      font-weight: bold;
+    }
+    button:hover { background: #00cc00; }
+    #stats {
+      background: #222;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-row { margin: 5px 0; }
+    .stat-label { color: #888; }
+    .stat-value { color: #00ff00; font-weight: bold; }
+    .stat-bad { color: #ff4444; }
+  </style>
+</head>
+<body>
+  <h1>Physics Stress Test</h1>
+
+  <div id="stats">
+    <div class="stat-row"><span class="stat-label">Total Bounces:</span> <span class="stat-value" id="stat-total">0</span></div>
+    <div class="stat-row"><span class="stat-label">Wall Bounces:</span> <span class="stat-value" id="stat-walls">0</span></div>
+    <div class="stat-row"><span class="stat-label">Corner Bounces:</span> <span class="stat-value" id="stat-corners">0</span></div>
+    <div class="stat-row"><span class="stat-label">Suspicious (angle &lt; 15°):</span> <span class="stat-value" id="stat-suspicious">0</span></div>
+    <div class="stat-row"><span class="stat-label">Stuck Events:</span> <span class="stat-value" id="stat-stuck">0</span></div>
+  </div>
+
+  <div>
+    <button onclick="startTest()">Start Stress Test</button>
+    <button onclick="stopTest()">Stop</button>
+    <button onclick="downloadLogs()">Download Logs</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+  </div>
+
+  <div id="game-container"></div>
+
+  <h3>Live Log Output:</h3>
+  <div id="log-output"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  <script>
+    // Log storage
+    let allLogs = [];
+    let stats = {
+      total: 0,
+      walls: 0,
+      corners: 0,
+      suspicious: 0,
+      stuck: 0
+    };
+
+    function log(msg, type = 'info') {
+      const time = new Date().toISOString().substr(11, 12);
+      const entry = `[${time}] ${msg}`;
+      allLogs.push({ time, msg, type });
+
+      const output = document.getElementById('log-output');
+      const div = document.createElement('div');
+      div.className = type;
+      div.textContent = entry;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+
+      // Keep last 500 logs
+      if (allLogs.length > 500) allLogs.shift();
+    }
+
+    function updateStats() {
+      document.getElementById('stat-total').textContent = stats.total;
+      document.getElementById('stat-walls').textContent = stats.walls;
+      document.getElementById('stat-corners').textContent = stats.corners;
+      document.getElementById('stat-suspicious').textContent = stats.suspicious;
+      document.getElementById('stat-stuck').textContent = stats.stuck;
+
+      // Highlight bad stats
+      const suspEl = document.getElementById('stat-suspicious');
+      const stuckEl = document.getElementById('stat-stuck');
+      suspEl.className = stats.suspicious > 5 ? 'stat-value stat-bad' : 'stat-value';
+      stuckEl.className = stats.stuck > 0 ? 'stat-value stat-bad' : 'stat-value';
+    }
+
+    // Simple stress test: rotating rectangle in middle, diagonal path
+    const STRESS_TEST_MAP = {
+      width: 800,
+      height: 600,
+      startZone: { x: 20, y: 500, width: 150, height: 80 },      // Bottom-left corner
+      finishZone: { x: 630, y: 20, width: 150, height: 80 },     // Top-right corner
+      obstacles: [
+        // Single rotating rectangle in the center
+        {
+          type: 'rectangle',
+          x: 350,  // Center X (will be adjusted for center pivot)
+          y: 260,  // Center Y
+          width: 200,
+          height: 30,
+          color: '#e74c3c',
+          behavior: 'rotating',
+          rotationSpeed: 2,  // RPM
+          rotationDirection: 'cw'
+        }
+      ]
+    };
+
+    // Physics test scene
+    class StressTestScene extends Phaser.Scene {
+      constructor() {
+        super({ key: 'StressTestScene' });
+        this.balls = [];
+        this.obstacles = [];
+        this.isRacing = false;
+        this.ballSpeed = 6;
+        this.bounceLog = [];
+        this.stuckCheckInterval = null;
+        this.lastPositions = {};
+      }
+
+      create() {
+        log('Scene created, initializing stress test...', 'info');
+
+        this.gameWidth = 800;
+        this.gameHeight = 600;
+
+        // Graphics layers
+        this.bgLayer = this.add.graphics();
+        this.obstacleLayer = this.add.graphics();
+        this.zoneLayer = this.add.graphics();
+
+        // Draw background
+        this.bgLayer.fillStyle(0xe8e0d0, 1);
+        this.bgLayer.fillRect(0, 0, 800, 600);
+
+        // Draw grid
+        this.bgLayer.lineStyle(1, 0xcccccc, 0.3);
+        for (let x = 0; x <= 800; x += 50) this.bgLayer.lineBetween(x, 0, x, 600);
+        for (let y = 0; y <= 600; y += 50) this.bgLayer.lineBetween(0, y, 800, y);
+
+        // Create walls
+        this.createWalls();
+
+        // Create obstacles from stress test map
+        this.createObstacles();
+
+        // Draw zones
+        this.drawZones();
+
+        // Create balls
+        this.createBalls();
+
+        // Collision handler with logging
+        this.matter.world.on('collisionstart', (event) => this.handleCollision(event));
+
+        // Keyboard
+        this.input.keyboard.on('keydown-SPACE', () => this.startRace());
+        this.input.keyboard.on('keydown-R', () => this.reset());
+
+        log('Initialization complete. Press SPACE or click Start to begin.', 'info');
+      }
+
+      createWalls() {
+        const opts = { isStatic: true, friction: 0, restitution: 1, label: 'wall' };
+        this.matter.add.rectangle(-10, 300, 20, 600, opts); // left
+        this.matter.add.rectangle(810, 300, 20, 600, opts); // right
+        this.matter.add.rectangle(400, -10, 800, 20, opts); // top
+        this.matter.add.rectangle(400, 610, 800, 20, opts); // bottom
+
+        // Visual walls
+        this.obstacleLayer.fillStyle(0x2d3748, 1);
+        this.obstacleLayer.fillRect(0, 0, 10, 600);
+        this.obstacleLayer.fillRect(790, 0, 10, 600);
+      }
+
+      createObstacles() {
+        STRESS_TEST_MAP.obstacles.forEach(obs => {
+          const color = parseInt(obs.color.replace('#', ''), 16);
+
+          if (obs.type === 'circle') {
+            const body = this.matter.add.circle(obs.x, obs.y, obs.radius, {
+              isStatic: true, friction: 0, restitution: 1, label: 'obstacle'
+            });
+            this.obstacleLayer.fillStyle(color, 1);
+            this.obstacleLayer.fillCircle(obs.x, obs.y, obs.radius);
+            this.obstacles.push({ body, data: obs, graphics: null });
+          } else {
+            const centerX = obs.x + obs.width / 2;
+            const centerY = obs.y + obs.height / 2;
+
+            const body = this.matter.add.rectangle(
+              centerX, centerY,
+              obs.width, obs.height,
+              { isStatic: true, friction: 0, restitution: 1, label: 'obstacle' }
+            );
+
+            // For rotating obstacles, create a graphics object
+            let graphics = null;
+            if (obs.behavior === 'rotating') {
+              graphics = this.add.graphics();
+              graphics.fillStyle(color, 1);
+              graphics.fillRect(-obs.width / 2, -obs.height / 2, obs.width, obs.height);
+              // Add rotation indicator
+              graphics.lineStyle(2, 0xffffff, 0.5);
+              graphics.lineBetween(0, 0, obs.width / 2 - 5, 0);
+              graphics.x = centerX;
+              graphics.y = centerY;
+            } else {
+              this.obstacleLayer.fillStyle(color, 1);
+              this.obstacleLayer.fillRect(obs.x, obs.y, obs.width, obs.height);
+            }
+
+            this.obstacles.push({
+              body,
+              data: obs,
+              graphics,
+              rotating: obs.behavior === 'rotating',
+              rotationSpeed: obs.rotationSpeed || 2,
+              rotationDirection: obs.rotationDirection || 'cw'
+            });
+          }
+        });
+        log(`Created ${this.obstacles.length} obstacles`, 'info');
+      }
+
+      drawZones() {
+        const start = STRESS_TEST_MAP.startZone;
+        const finish = STRESS_TEST_MAP.finishZone;
+
+        // Start zone (green)
+        this.zoneLayer.fillStyle(0x00ff88, 0.3);
+        this.zoneLayer.fillRect(start.x, start.y, start.width, start.height);
+        this.zoneLayer.lineStyle(2, 0x00ff88, 1);
+        this.zoneLayer.strokeRect(start.x, start.y, start.width, start.height);
+
+        // Finish zone (checkered)
+        const tileSize = 15;
+        for (let x = finish.x; x < finish.x + finish.width; x += tileSize) {
+          for (let y = finish.y; y < finish.y + finish.height; y += tileSize) {
+            const col = Math.floor((x - finish.x) / tileSize);
+            const row = Math.floor((y - finish.y) / tileSize);
+            this.zoneLayer.fillStyle((col + row) % 2 === 0 ? 0xffffff : 0x000000, 0.9);
+            this.zoneLayer.fillRect(x, y, tileSize, tileSize);
+          }
+        }
+        this.zoneLayer.lineStyle(3, 0xff4444, 1);
+        this.zoneLayer.strokeRect(finish.x, finish.y, finish.width, finish.height);
+      }
+
+      createBalls() {
+        const colors = [
+          { name: 'Red', hex: '#ff4444' },
+          { name: 'Blue', hex: '#4444ff' },
+          { name: 'Green', hex: '#44ff44' },
+          { name: 'Yellow', hex: '#ffff44' },
+          { name: 'Purple', hex: '#ff44ff' }
+        ];
+        const start = STRESS_TEST_MAP.startZone;
+        const laneWidth = start.width / colors.length;
+
+        colors.forEach((color, i) => {
+          const x = start.x + laneWidth * i + laneWidth / 2;
+          const y = start.y + start.height / 2;
+
+          const body = this.matter.add.circle(x, y, 12, {
+            restitution: 1, friction: 0, frictionAir: 0, label: 'ball'
+          });
+
+          const graphics = this.add.graphics();
+          graphics.fillStyle(parseInt(color.hex.replace('#', ''), 16), 1);
+          graphics.fillCircle(0, 0, 12);
+          graphics.lineStyle(2, 0xffffff, 0.5);
+          graphics.strokeCircle(0, 0, 12);
+          graphics.x = x;
+          graphics.y = y;
+
+          this.balls.push({
+            body, graphics, name: color.name, color: color.hex,
+            finished: false, radius: 12
+          });
+        });
+        log(`Created ${this.balls.length} balls`, 'info');
+      }
+
+      handleCollision(event) {
+        if (!this.isRacing) return;
+
+        event.pairs.forEach(pair => {
+          let ballBody = null, otherBody = null;
+
+          if (pair.bodyA.label === 'ball') {
+            ballBody = pair.bodyA;
+            otherBody = pair.bodyB;
+          } else if (pair.bodyB.label === 'ball') {
+            ballBody = pair.bodyB;
+            otherBody = pair.bodyA;
+          }
+
+          if (ballBody) {
+            const ball = this.balls.find(b => b.body === ballBody);
+            if (!ball || ball.finished) return;
+
+            const pos = ballBody.position;
+            const vel = ballBody.velocity;
+            const preAngle = Math.atan2(vel.y, vel.x) * 180 / Math.PI;
+
+            // Detect corners
+            const nearLeft = pos.x < 30;
+            const nearRight = pos.x > 770;
+            const nearTop = pos.y < 30;
+            const nearBottom = pos.y > 570;
+            const isCorner = (nearLeft || nearRight) && (nearTop || nearBottom);
+
+            let newAngle;
+            let hitType = isCorner ? 'CORNER' : otherBody.label;
+
+            if (isCorner) {
+              const dirX = nearLeft ? 1 : -1;
+              const dirY = nearTop ? 1 : -1;
+              newAngle = Math.atan2(dirY, dirX) + (Math.random() - 0.5) * 0.5;
+              stats.corners++;
+            } else if (otherBody.label === 'wall') {
+              const twist = (0.3 + Math.random() * 0.5) * (Math.random() < 0.5 ? 1 : -1);
+              newAngle = Math.atan2(vel.y, vel.x) + twist;
+              stats.walls++;
+            } else {
+              const twist = (Math.random() - 0.5) * 0.5;
+              newAngle = Math.atan2(vel.y, vel.x) + twist;
+            }
+
+            const newVelX = Math.cos(newAngle) * this.ballSpeed;
+            const newVelY = Math.sin(newAngle) * this.ballSpeed;
+            this.matter.body.setVelocity(ballBody, { x: newVelX, y: newVelY });
+
+            const postAngle = newAngle * 180 / Math.PI;
+            const angleDiff = Math.abs(postAngle - preAngle);
+
+            stats.total++;
+
+            // Log bounce
+            const logEntry = {
+              ball: ball.name,
+              pos: `(${Math.round(pos.x)}, ${Math.round(pos.y)})`,
+              hit: hitType,
+              preAngle: preAngle.toFixed(1),
+              postAngle: postAngle.toFixed(1),
+              diff: angleDiff.toFixed(1)
+            };
+
+            if (hitType === 'wall' && angleDiff < 15) {
+              stats.suspicious++;
+              log(`[WARNING] ${ball.name} hit ${hitType} at ${logEntry.pos} - angle: ${logEntry.preAngle}° → ${logEntry.postAngle}° (diff: ${logEntry.diff}°)`, 'warning');
+            } else if (hitType === 'CORNER') {
+              log(`[CORNER] ${ball.name} at ${logEntry.pos} - bounced to ${logEntry.postAngle}°`, 'info');
+            }
+
+            this.bounceLog.push(logEntry);
+            updateStats();
+          }
+        });
+      }
+
+      startRace() {
+        if (this.isRacing) return;
+
+        log('=== RACE STARTED ===', 'info');
+        this.isRacing = true;
+        stats = { total: 0, walls: 0, corners: 0, suspicious: 0, stuck: 0 };
+        updateStats();
+
+        this.balls.forEach(ball => {
+          const angle = -Math.PI/2 + (Math.random() - 0.5) * 0.5;
+          this.matter.body.setVelocity(ball.body, {
+            x: Math.cos(angle) * this.ballSpeed,
+            y: Math.sin(angle) * this.ballSpeed
+          });
+          this.lastPositions[ball.name] = { x: ball.body.position.x, y: ball.body.position.y };
+        });
+
+        // Check for stuck balls every second
+        this.stuckCheckInterval = setInterval(() => this.checkStuck(), 1000);
+      }
+
+      checkStuck() {
+        this.balls.forEach(ball => {
+          if (ball.finished) return;
+
+          const pos = ball.body.position;
+          const last = this.lastPositions[ball.name];
+
+          if (last) {
+            const dist = Math.sqrt(Math.pow(pos.x - last.x, 2) + Math.pow(pos.y - last.y, 2));
+
+            // If ball moved less than 5 pixels in 1 second, it might be stuck
+            if (dist < 5 && this.isRacing) {
+              stats.stuck++;
+              log(`[STUCK] ${ball.name} appears stuck at (${Math.round(pos.x)}, ${Math.round(pos.y)}) - moved only ${dist.toFixed(1)}px`, 'error');
+              updateStats();
+
+              // Force unstick
+              const angle = Math.random() * Math.PI * 2;
+              this.matter.body.setVelocity(ball.body, {
+                x: Math.cos(angle) * this.ballSpeed,
+                y: Math.sin(angle) * this.ballSpeed
+              });
+            }
+          }
+
+          this.lastPositions[ball.name] = { x: pos.x, y: pos.y };
+        });
+      }
+
+      update(time, delta) {
+        const deltaSeconds = (delta || 16) / 1000;
+        const finish = STRESS_TEST_MAP.finishZone;
+
+        // Update rotating obstacles
+        this.obstacles.forEach(obs => {
+          if (obs.rotating && obs.graphics) {
+            const rpm = obs.rotationSpeed || 2;
+            const direction = obs.rotationDirection === 'ccw' ? -1 : 1;
+            const rotationAmount = (rpm * Math.PI * 2 / 60) * deltaSeconds * direction;
+
+            obs.graphics.rotation += rotationAmount;
+            this.matter.body.setAngle(obs.body, obs.body.angle + rotationAmount);
+          }
+        });
+
+        this.balls.forEach(ball => {
+          if (ball.graphics && ball.body) {
+            ball.graphics.x = ball.body.position.x;
+            ball.graphics.y = ball.body.position.y;
+          }
+
+          if (this.isRacing && !ball.finished) {
+            const vel = ball.body.velocity;
+            const pos = ball.body.position;
+            const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+
+            // Check finish
+            if (pos.x >= finish.x && pos.x <= finish.x + finish.width &&
+                pos.y >= finish.y && pos.y <= finish.y + finish.height) {
+              ball.finished = true;
+              this.matter.body.setVelocity(ball.body, { x: 0, y: 0 });
+              this.matter.body.setStatic(ball.body, true);
+              ball.graphics.setAlpha(0.4);
+              log(`${ball.name} FINISHED!`, 'info');
+
+              if (this.balls.every(b => b.finished)) {
+                this.endRace();
+              }
+              return;
+            }
+
+            // Wall detection with larger margin (matches real game)
+            const wallMargin = 40;
+            const nearLeft = pos.x < wallMargin;
+            const nearRight = pos.x > 800 - wallMargin;
+            const nearTop = pos.y < wallMargin;
+            const nearBottom = pos.y > 600 - wallMargin;
+            const nearAnyWall = nearLeft || nearRight || nearTop || nearBottom;
+
+            // Initialize position history for stuck detection
+            if (!ball.posHistory) ball.posHistory = [];
+            ball.posHistory.push({ x: pos.x, y: pos.y });
+            if (ball.posHistory.length > 60) ball.posHistory.shift();
+
+            // Check if truly stuck (hasn't moved much AND near a wall)
+            // Only trigger near walls to avoid false positives from bouncing on obstacles
+            let isStuck = false;
+            if (ball.posHistory.length >= 30 && nearAnyWall) {
+              const oldPos = ball.posHistory[0];
+              const distMoved = Math.sqrt(Math.pow(pos.x - oldPos.x, 2) + Math.pow(pos.y - oldPos.y, 2));
+              isStuck = distMoved < 15; // Must be near wall AND barely moving
+            }
+
+            const absX = Math.abs(vel.x);
+            const absY = Math.abs(vel.y);
+
+            let needsAdjust = false;
+            let newVelX = vel.x, newVelY = vel.y;
+
+            // If stuck, force toward center
+            if (isStuck) {
+              const centerX = 400, centerY = 300;
+              const toCenter = Math.atan2(centerY - pos.y, centerX - pos.x);
+              const randomSpread = (Math.random() - 0.5) * Math.PI / 2;
+              const escapeAngle = toCenter + randomSpread;
+              newVelX = Math.cos(escapeAngle) * this.ballSpeed * 1.2;
+              newVelY = Math.sin(escapeAngle) * this.ballSpeed * 1.2;
+              ball.posHistory = [];
+              needsAdjust = true;
+              stats.stuck++;
+              log(`[STUCK] ${ball.name} forced toward center from (${Math.round(pos.x)}, ${Math.round(pos.y)})`, 'error');
+              updateStats();
+            }
+            // More aggressive wall detection (threshold 0.5)
+            else if ((nearLeft || nearRight) && absX < absY * 0.5) {
+              const dir = nearLeft ? 1 : -1;
+              const angle = (Math.PI / 4) + Math.random() * (Math.PI / 4); // 45-90 degrees
+              newVelX = Math.cos(angle) * this.ballSpeed * dir;
+              newVelY = vel.y > 0 ? Math.sin(angle) * this.ballSpeed : -Math.sin(angle) * this.ballSpeed;
+              needsAdjust = true;
+            } else if ((nearTop || nearBottom) && absY < absX * 0.5) {
+              const dir = nearTop ? 1 : -1;
+              const angle = (Math.PI / 4) + Math.random() * (Math.PI / 4); // 45-90 degrees
+              newVelY = Math.sin(angle) * this.ballSpeed * dir;
+              newVelX = vel.x > 0 ? Math.cos(angle) * this.ballSpeed : -Math.cos(angle) * this.ballSpeed;
+              needsAdjust = true;
+            }
+            // Near any wall and moving too parallel - bounce toward center
+            else if (nearAnyWall) {
+              const ratio = Math.min(absX, absY) / Math.max(absX, absY);
+              if (ratio < 0.25) {
+                const centerX = 400, centerY = 300;
+                const toCenter = Math.atan2(centerY - pos.y, centerX - pos.x);
+                const randomSpread = (Math.random() - 0.5) * Math.PI / 3;
+                newVelX = Math.cos(toCenter + randomSpread) * this.ballSpeed;
+                newVelY = Math.sin(toCenter + randomSpread) * this.ballSpeed;
+                needsAdjust = true;
+              }
+            }
+            // General: if moving too parallel (not near wall)
+            else if (speed > 0.5) {
+              const ratio = Math.min(absX, absY) / Math.max(absX, absY);
+              if (ratio < 0.1) {
+                const currAngle = Math.atan2(vel.y, vel.x);
+                const nudge = (0.5 + Math.random() * 0.5) * (Math.random() < 0.5 ? 1 : -1);
+                newVelX = Math.cos(currAngle + nudge) * this.ballSpeed;
+                newVelY = Math.sin(currAngle + nudge) * this.ballSpeed;
+                needsAdjust = true;
+              }
+            }
+
+            if (needsAdjust) {
+              this.matter.body.setVelocity(ball.body, { x: newVelX, y: newVelY });
+            } else if (speed > 0.5) {
+              const scale = this.ballSpeed / speed;
+              this.matter.body.setVelocity(ball.body, { x: vel.x * scale, y: vel.y * scale });
+            } else if (speed < 0.5) {
+              const angle = -Math.PI/2 + (Math.random() - 0.5) * Math.PI/2;
+              this.matter.body.setVelocity(ball.body, {
+                x: Math.cos(angle) * this.ballSpeed,
+                y: Math.sin(angle) * this.ballSpeed
+              });
+            }
+          }
+        });
+      }
+
+      endRace() {
+        this.isRacing = false;
+        if (this.stuckCheckInterval) {
+          clearInterval(this.stuckCheckInterval);
+        }
+        log('=== RACE ENDED ===', 'info');
+        log(`Final Stats: ${stats.total} bounces, ${stats.walls} walls, ${stats.corners} corners, ${stats.suspicious} suspicious, ${stats.stuck} stuck`, 'info');
+
+        // Save to localStorage for external reading
+        localStorage.setItem('gmi-physics-test-results', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          stats: stats,
+          bounceLog: this.bounceLog.slice(-100)
+        }));
+        log('Results saved to localStorage', 'info');
+      }
+
+      reset() {
+        this.isRacing = false;
+        if (this.stuckCheckInterval) {
+          clearInterval(this.stuckCheckInterval);
+        }
+
+        const start = STRESS_TEST_MAP.startZone;
+        const laneWidth = start.width / this.balls.length;
+
+        this.balls.forEach((ball, i) => {
+          this.matter.body.setStatic(ball.body, false);
+          const x = start.x + laneWidth * i + laneWidth / 2;
+          const y = start.y + start.height / 2;
+          this.matter.body.setPosition(ball.body, { x, y });
+          this.matter.body.setVelocity(ball.body, { x: 0, y: 0 });
+          ball.finished = false;
+          ball.graphics.setAlpha(1);
+        });
+
+        this.bounceLog = [];
+        log('Reset complete', 'info');
+      }
+    }
+
+    // Game instance
+    let game = null;
+
+    function startTest() {
+      if (!game) {
+        game = new Phaser.Game({
+          type: Phaser.AUTO,
+          parent: 'game-container',
+          width: 800,
+          height: 600,
+          backgroundColor: '#e8e0d0',
+          physics: {
+            default: 'matter',
+            matter: { gravity: { y: 0 }, debug: false }
+          },
+          scene: [StressTestScene]
+        });
+        log('Game initialized', 'info');
+      } else {
+        game.scene.getScene('StressTestScene').startRace();
+      }
+    }
+
+    function stopTest() {
+      if (game) {
+        const scene = game.scene.getScene('StressTestScene');
+        if (scene) {
+          scene.isRacing = false;
+          scene.reset();
+        }
+      }
+    }
+
+    function downloadLogs() {
+      const data = {
+        timestamp: new Date().toISOString(),
+        stats: stats,
+        logs: allLogs
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'physics-test-logs.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearLogs() {
+      allLogs = [];
+      document.getElementById('log-output').innerHTML = '';
+      stats = { total: 0, walls: 0, corners: 0, suspicious: 0, stuck: 0 };
+      updateStats();
+    }
+
+    log('Physics Stress Test loaded. Click "Start Stress Test" to begin.', 'info');
+
+    // Auto-run if URL has ?auto=true
+    if (window.location.search.includes('auto=true')) {
+      log('Auto-run mode detected, starting in 1 second...', 'info');
+      setTimeout(() => {
+        startTest();
+        // Auto-start race after game initializes
+        setTimeout(() => {
+          if (game) {
+            game.scene.getScene('StressTestScene').startRace();
+          }
+        }, 1000);
+      }, 1000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+{
+  "name": "Level 3 - Boss Battle",
+  "width": 900,
+  "height": 700,
+  "data": {
+    "startZone": {
+      "x": 50,
+      "y": 600,
+      "width": 800,
+      "height": 60
+    },
+    "finishZone": null,
+    "obstacles": [
+      {
+        "id": "obs-pillar-1",
+        "type": "rectangle",
+        "x": 150,
+        "y": 300,
+        "width": 40,
+        "height": 200,
+        "color": "#7f8c8d",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-pillar-2",
+        "type": "rectangle",
+        "x": 350,
+        "y": 300,
+        "width": 40,
+        "height": 200,
+        "color": "#7f8c8d",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-pillar-3",
+        "type": "rectangle",
+        "x": 510,
+        "y": 300,
+        "width": 40,
+        "height": 200,
+        "color": "#7f8c8d",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-pillar-4",
+        "type": "rectangle",
+        "x": 710,
+        "y": 300,
+        "width": 40,
+        "height": 200,
+        "color": "#7f8c8d",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-cover-1",
+        "type": "rectangle",
+        "x": 100,
+        "y": 450,
+        "width": 150,
+        "height": 30,
+        "color": "#34495e",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-cover-2",
+        "type": "rectangle",
+        "x": 650,
+        "y": 450,
+        "width": 150,
+        "height": 30,
+        "color": "#34495e",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-breakable-center",
+        "type": "rectangle",
+        "x": 400,
+        "y": 350,
+        "width": 100,
+        "height": 100,
+        "color": "#27ae60",
+        "behavior": "breakable",
+        "health": 5,
+        "breakableBy": ["Red", "Blue", "Green", "Yellow", "Purple"]
+      }
+    ],
+    "itemSpawns": [
+      {
+        "id": "item-wep-left",
+        "x": 80,
+        "y": 550,
+        "itemType": "weapon_crate",
+        "spawnOnStart": true,
+        "respawnTime": 6000
+      },
+      {
+        "id": "item-wep-right",
+        "x": 820,
+        "y": 550,
+        "itemType": "weapon_crate",
+        "spawnOnStart": true,
+        "respawnTime": 6000
+      },
+      {
+        "id": "item-wep-center",
+        "x": 450,
+        "y": 550,
+        "itemType": "weapon_crate",
+        "spawnOnStart": true,
+        "respawnTime": 4000
+      },
+      {
+        "id": "item-shield-1",
+        "x": 250,
+        "y": 400,
+        "itemType": "shield",
+        "spawnOnStart": true,
+        "respawnTime": 12000
+      },
+      {
+        "id": "item-shield-2",
+        "x": 650,
+        "y": 400,
+        "itemType": "shield",
+        "spawnOnStart": true,
+        "respawnTime": 12000
+      },
+      {
+        "id": "item-damage-boost",
+        "x": 450,
+        "y": 480,
+        "itemType": "damage_boost",
+        "spawnOnStart": true,
+        "respawnTime": 15000
+      },
+      {
+        "id": "item-heal-left",
+        "x": 175,
+        "y": 550,
+        "itemType": "health_pack",
+        "spawnOnStart": true,
+        "respawnTime": 8000
+      },
+      {
+        "id": "item-heal-right",
+        "x": 725,
+        "y": 550,
+        "itemType": "health_pack",
+        "spawnOnStart": true,
+        "respawnTime": 8000
+      },
+      {
+        "id": "item-speed-center",
+        "x": 450,
+        "y": 400,
+        "itemType": "speed_boost",
+        "spawnOnStart": true,
+        "respawnTime": 10000
+      },
+      {
+        "id": "item-random-1",
+        "x": 300,
+        "y": 550,
+        "itemType": "random",
+        "spawnOnStart": true,
+        "respawnTime": 7000
+      },
+      {
+        "id": "item-random-2",
+        "x": 600,
+        "y": 550,
+        "itemType": "random",
+        "spawnOnStart": true,
+        "respawnTime": 7000
+      }
+    ],
+    "animations": null,
+    "bossConfig": {
+      "x": 450,
+      "y": 120,
+      "width": 200,
+      "height": 100,
+      "hp": 150,
+      "attackPattern": "mixed",
+      "attackCooldown": 2000,
+      "winCondition": "boss"
+    }
+  },
+  "exportedAt": 1738310400000,
+  "version": "1.0"
+}

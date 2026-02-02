@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build outputs (can be regenerated)
+gmi-engine/src/bundle.js
+gmi-engine/src/editor-bundle.js
+gmi-engine/src/multi-sim-bundle.js
+gmi-engine/src/sim-runner-bundle.js
+
+# Logs
+*.log
+simulation logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temp files
+*.tmp

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chain Data Test</title>
+  <style>
+    body { font-family: monospace; background: #1a1a2e; color: #fff; padding: 20px; }
+    pre { background: #2a2a3e; padding: 10px; overflow: auto; max-height: 400px; }
+    .success { color: #2ecc71; }
+    .error { color: #e74c3c; }
+  </style>
+</head>
+<body>
+  <h1>Chain Data Verification</h1>
+  <div id="output"></div>
+
+  <script type="module">
+    import { CHAIN_RACE_MAPS, CHAIN_BOSS_MAPS, CHAIN_MIXED, CHAIN_WEAPONS_TEST } from './game/systems/MapChain.js';
+
+    const output = document.getElementById('output');
+
+    function log(msg, isError = false) {
+      const div = document.createElement('div');
+      div.className = isError ? 'error' : 'success';
+      div.textContent = msg;
+      output.appendChild(div);
+    }
+
+    function logJson(label, obj) {
+      const pre = document.createElement('pre');
+      pre.textContent = label + ':\n' + JSON.stringify(obj, null, 2);
+      output.appendChild(pre);
+    }
+
+    // Test CHAIN_RACE_MAPS
+    log(`CHAIN_RACE_MAPS: ${CHAIN_RACE_MAPS?.length || 0} maps`);
+    if (CHAIN_RACE_MAPS?.[0]) {
+      log(`  First map: "${CHAIN_RACE_MAPS[0].name}"`);
+      log(`  Obstacles: ${CHAIN_RACE_MAPS[0].obstacles?.length || 0}`);
+      log(`  Has startZone: ${!!CHAIN_RACE_MAPS[0].startZone}`);
+      log(`  Has finishZone: ${!!CHAIN_RACE_MAPS[0].finishZone}`);
+      if (CHAIN_RACE_MAPS[0].obstacles?.[0]) {
+        logJson('First obstacle', CHAIN_RACE_MAPS[0].obstacles[0]);
+      }
+    }
+
+    // Test CHAIN_MIXED
+    log(`\nCHAIN_MIXED: ${CHAIN_MIXED?.length || 0} maps`);
+    if (CHAIN_MIXED?.[0]) {
+      log(`  First map: "${CHAIN_MIXED[0].name}"`);
+      log(`  Obstacles: ${CHAIN_MIXED[0].obstacles?.length || 0}`);
+      log(`  Same as CHAIN_RACE_MAPS[0]: ${CHAIN_MIXED[0] === CHAIN_RACE_MAPS[0]}`);
+    }
+
+    // Test that data is at root level (not nested)
+    log(`\nData structure check:`);
+    const testMap = CHAIN_RACE_MAPS[0];
+    log(`  testMap.obstacles exists: ${!!testMap.obstacles}`);
+    log(`  testMap.data exists: ${!!testMap.data}`, !!testMap.data);
+    log(`  testMap.data?.obstacles exists: ${!!testMap.data?.obstacles}`, !!testMap.data?.obstacles);
+
+    // Simulate what RaceScene does
+    log(`\nSimulating RaceScene.generateMap():`);
+    const editorMapData = testMap;
+    const editorData = editorMapData.data || editorMapData;
+    log(`  editorData === testMap: ${editorData === testMap}`);
+    log(`  editorData.obstacles.length: ${editorData.obstacles?.length || 0}`);
+
+    log(`\n=== TEST COMPLETE ===`);
+  </script>
+</body>
+</html>

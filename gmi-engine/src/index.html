@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GMI Racing Engine</title>
+  <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #2a2a2a;
+      --accent-cyan: #00ffff;
+      --accent-magenta: #ff00ff;
+      --text-primary: #ffffff;
+      --text-secondary: #aaaaaa;
+      --border: #333333;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .app-container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-header h1 {
+      font-size: 16px;
+      color: var(--accent-cyan);
+      margin-bottom: 4px;
+    }
+
+    .sidebar-header p {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .tabs {
+      flex: 1;
+      padding: 10px 0;
+    }
+
+    .tab-btn {
+      width: 100%;
+      padding: 12px 20px;
+      background: transparent;
+      border: none;
+      border-left: 3px solid transparent;
+      color: var(--text-secondary);
+      text-align: left;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tab-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .tab-btn.active {
+      background: var(--bg-tertiary);
+      color: var(--accent-cyan);
+      border-left-color: var(--accent-cyan);
+    }
+
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .toolbar {
+      height: 50px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 10px;
+    }
+
+    .toolbar-btn {
+      padding: 8px 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+
+    .toolbar-btn:hover {
+      background: var(--accent-cyan);
+      color: var(--bg-primary);
+      border-color: var(--accent-cyan);
+    }
+
+    .toolbar-btn.primary {
+      background: var(--accent-cyan);
+      color: var(--bg-primary);
+      border-color: var(--accent-cyan);
+    }
+
+    .toolbar-btn.primary:hover {
+      background: var(--accent-magenta);
+      border-color: var(--accent-magenta);
+    }
+
+    .content-area {
+      flex: 1;
+      display: flex;
+    }
+
+    .game-viewport {
+      flex: 1;
+      background: var(--bg-primary);
+      position: relative;
+      overflow: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    #game-container {
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+    }
+
+    #game-container canvas {
+      display: block;
+    }
+
+    .panel-area {
+      width: 320px;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 15px;
+      height: 100%;
+      max-height: calc(100vh - 80px);
+    }
+
+    .panel {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 15px;
+    }
+
+    .panel-header {
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .panel-content {
+      padding: 15px;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .control-value {
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      background: var(--bg-primary);
+      border-radius: 2px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--accent-cyan);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: var(--accent-magenta);
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .race-status {
+      padding: 15px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      margin-bottom: 15px;
+    }
+
+    .race-status-title {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .race-timer {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      font-family: monospace;
+    }
+
+    .standings {
+      margin-top: 15px;
+    }
+
+    .standing-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--bg-primary);
+      border-radius: 4px;
+      margin-bottom: 6px;
+      gap: 10px;
+    }
+
+    .standing-pos {
+      width: 20px;
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .standing-ball {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+
+    .standing-name {
+      flex: 1;
+      font-size: 12px;
+    }
+
+    .standing-progress {
+      width: 80px;
+      height: 4px;
+      background: var(--bg-tertiary);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .standing-progress-fill {
+      height: 100%;
+      background: var(--accent-cyan);
+      transition: width 0.3s;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 30px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 255, 255, 0.05);
+      color: var(--accent-cyan);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* Volume Panel Styles */
+    .volume-ball-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .volume-ball-row:last-child {
+      border-bottom: none;
+    }
+
+    .volume-ball-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .volume-ball-name {
+      font-size: 12px;
+      font-weight: 600;
+      width: 50px;
+    }
+
+    .volume-ball-amount {
+      font-size: 12px;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      flex: 1;
+      text-align: right;
+    }
+
+    .volume-ball-buttons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .volume-btn {
+      padding: 4px 8px;
+      font-size: 10px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .volume-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .volume-btn.buy:hover {
+      border-color: #00cc00;
+      color: #00cc00;
+    }
+
+    .volume-btn.sell:hover {
+      border-color: #ff4444;
+      color: #ff4444;
+    }
+
+    .volume-rank-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+    }
+
+    .volume-rank-position {
+      font-size: 14px;
+      font-weight: 700;
+      width: 24px;
+      text-align: center;
+    }
+
+    .volume-rank-position.rank-1 { color: #ffd700; }
+    .volume-rank-position.rank-2 { color: #c0c0c0; }
+    .volume-rank-position.rank-3 { color: #cd7f32; }
+    .volume-rank-position.rank-4,
+    .volume-rank-position.rank-5 { color: #666666; }
+
+    .volume-rank-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--bg-primary);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .volume-rank-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+
+    .volume-change {
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .volume-change.up {
+      color: #00cc00;
+      background: rgba(0, 204, 0, 0.1);
+    }
+
+    .volume-change.down {
+      color: #ff4444;
+      background: rgba(255, 68, 68, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h1>GMI Racing</h1>
+        <p>Engine v1.0.0</p>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="race">Race</button>
+        <button class="tab-btn" data-tab="balls">Balls</button>
+        <button class="tab-btn" data-tab="map">Map</button>
+        <button class="tab-btn" data-tab="physics">Physics</button>
+        <button class="tab-btn" data-tab="items">Items</button>
+        <button class="tab-btn" data-tab="config">Config</button>
+        <button class="tab-btn" data-tab="volume">Volume</button>
+        <button class="tab-btn" data-tab="stats">Stats</button>
+      </div>
+    </div>
+
+    <div class="main-area">
+      <div class="toolbar">
+        <button class="toolbar-btn primary" id="btn-start">Start Race</button>
+        <button class="toolbar-btn" id="btn-reset">Reset</button>
+        <button class="toolbar-btn" id="btn-new-map">New Map</button>
+        <button class="toolbar-btn" id="btn-export-logs" style="background: #2a4a2a; border-color: #4a4;">Export Bounce Logs</button>
+        <button class="toolbar-btn" id="btn-export-game-logs" style="background: #2a2a4a; border-color: #44a;">Export Game Logs</button>
+        <button class="toolbar-btn" id="btn-toggle-debug" style="background: #4a2a2a; border-color: #a44;">Debug Panel</button>
+        <span style="flex:1"></span>
+        <button class="toolbar-btn" id="btn-settings">Settings</button>
+      </div>
+
+      <!-- Debug Panel (floating) -->
+      <div id="debug-panel" style="display: none; position: absolute; top: 60px; right: 10px; width: 350px; max-height: 400px; overflow-y: auto; background: rgba(0,0,0,0.9); border: 2px solid #a44; border-radius: 8px; padding: 10px; z-index: 2000; font-family: monospace; font-size: 11px;">
+        <div style="color: #ff6666; font-weight: bold; margin-bottom: 8px; font-size: 12px;">DEBUG PANEL</div>
+        <div id="debug-content" style="color: #ccc; white-space: pre-wrap;">Loading...</div>
+      </div>
+
+      <div class="content-area">
+        <div class="game-viewport">
+          <div id="game-container"></div>
+        </div>
+
+        <div class="panel-area">
+          <!-- Race Panel -->
+          <div id="panel-race" class="tab-panel">
+            <div class="race-status">
+              <div class="race-status-title">Race Time</div>
+              <div class="race-timer" id="race-timer">00:00.0</div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">Standings</div>
+              <div class="panel-content">
+                <div class="standings" id="standings">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">Race Settings</div>
+              <div class="panel-content">
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Ball Count</span>
+                    <span class="control-value" id="val-ball-count">5</span>
+                  </div>
+                  <input type="range" id="slider-ball-count" min="2" max="10" value="5">
+                </div>
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Race Duration (sec)</span>
+                    <span class="control-value" id="val-race-duration">60</span>
+                  </div>
+                  <input type="range" id="slider-race-duration" min="30" max="300" value="60">
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">Map Chain (Campaign)</div>
+              <div class="panel-content">
+                <div class="control-group">
+                  <label class="control-label">Select Chain</label>
+                  <select id="select-chain" class="control-input">
+                    <option value="">-- Single Map Mode --</option>
+                    <option value="race">Race Chain (3 levels)</option>
+                    <option value="boss">Boss Chain (3 bosses)</option>
+                    <option value="mixed">Mixed Campaign (6 levels)</option>
+                    <option value="weapons">Weapons Test (3 levels)</option>
+                  </select>
+                </div>
+                <div id="chain-progress" style="margin-top: 10px; display: none;">
+                  <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                    <span id="chain-level-text">Level 1/3</span>
+                    <span id="chain-map-name">Easy Start</span>
+                  </div>
+                  <div style="background: #333; border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div id="chain-progress-bar" style="background: linear-gradient(90deg, #4ade80, #22c55e); height: 100%; width: 33%; transition: width 0.3s;"></div>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 12px;">
+                  <button class="toolbar-btn" id="btn-start-chain" style="flex:1; background: #166534;">Start Chain</button>
+                  <button class="toolbar-btn" id="btn-stop-chain" style="flex:1; display: none;">Stop Chain</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Balls Panel -->
+          <div id="panel-balls" class="tab-panel hidden">
+            <div class="panel">
+              <div class="panel-header">Ball Properties</div>
+              <div class="panel-content">
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Ball Radius</span>
+                    <span class="control-value" id="val-ball-radius">15</span>
+                  </div>
+                  <input type="range" id="slider-ball-radius" min="8" max="30" value="15">
+                </div>
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Ball Density</span>
+                    <span class="control-value" id="val-ball-density">0.5</span>
+                  </div>
+                  <input type="range" id="slider-ball-density" min="1" max="100" value="50">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Map Panel -->
+          <div id="panel-map" class="tab-panel hidden">
+            <div class="panel">
+              <div class="panel-header">Editor Maps</div>
+              <div class="panel-content">
+                <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 15px;">
+                  Load maps created in the Map Editor
+                </p>
+                <div class="control-group">
+                  <div class="control-label"><span>Select Map</span></div>
+                  <select id="editor-map-select">
+                    <option value="">-- Procedural Map --</option>
+                  </select>
+                </div>
+                <button id="btn-load-editor-map" class="toolbar-btn" style="width: 100%; margin-top: 10px;">Load Selected Map</button>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+                  <a href="editor.html" class="toolbar-btn primary" style="display: block; text-align: center; text-decoration: none;">Open Map Editor</a>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-header">Import SVG Map</div>
+              <div class="panel-content">
+                <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 15px;">
+                  Or import from Illustrator with layers: <strong>collision</strong> (physics shapes),
+                  <strong>finish</strong> (finish line), <strong>spawn</strong> (ball start area)
+                </p>
+                <div class="drop-zone" id="svg-drop-zone">
+                  <span>Drop SVG here or click to browse</span>
+                  <input type="file" id="svg-file-input" accept=".svg" style="display: none;">
+                </div>
+                <div id="svg-status" style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);"></div>
+                <button id="btn-clear-svg" class="btn-secondary" style="margin-top: 10px; display: none;">Clear Custom Map</button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-header">Procedural Generation (Fallback)</div>
+              <div class="panel-content">
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Noise Scale</span>
+                    <span class="control-value" id="val-noise-scale">50</span>
+                  </div>
+                  <input type="range" id="slider-noise-scale" min="10" max="200" value="50">
+                </div>
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Platform Density</span>
+                    <span class="control-value" id="val-platform-density">0.5</span>
+                  </div>
+                  <input type="range" id="slider-platform-density" min="1" max="100" value="50">
+                </div>
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Seed</span>
+                    <span class="control-value" id="val-seed">12345</span>
+                  </div>
+                  <input type="range" id="slider-seed" min="1" max="99999" value="12345">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Physics Panel -->
+          <div id="panel-physics" class="tab-panel hidden">
+            <div class="panel">
+              <div class="panel-header">Ball Physics</div>
+              <div class="panel-content">
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Ball Speed</span>
+                    <span class="control-value" id="val-gravity">8</span>
+                  </div>
+                  <input type="range" id="slider-gravity" min="1" max="20" value="8">
+                </div>
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Obstacle Density</span>
+                    <span class="control-value" id="val-bounce">0.5</span>
+                  </div>
+                  <input type="range" id="slider-bounce" min="10" max="100" value="50">
+                </div>
+                <div class="control-group">
+                  <div class="control-label">
+                    <span>Air Resistance</span>
+                    <span class="control-value" id="val-air-resistance">0.01</span>
+                  </div>
+                  <input type="range" id="slider-air-resistance" min="0" max="100" value="1">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Items Panel -->
+          <div id="panel-items" class="tab-panel hidden">
+            <div class="panel">
+              <div class="panel-header">Items (Coming Soon)</div>
+              <div class="panel-content">
+                <p style="color: var(--text-secondary); font-size: 12px;">
+                  Power-ups and chaos items will be added here.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Config Panel -->
+          <div id="panel-config" class="tab-panel hidden">
+            <div class="panel">
+              <div class="panel-header">Configuration</div>
+              <div class="panel-content">
+                <div class="control-group">
+                  <div class="control-label"><span>Current Config</span></div>
+                  <select id="config-select">
+                    <option value="default">default</option>
+                  </select>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 10px;">
+                  <button class="toolbar-btn" id="btn-save-config" style="flex:1">Save</button>
+                  <button class="toolbar-btn" id="btn-load-config" style="flex:1">Load</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Volume Panel -->
+          <div id="panel-volume" class="tab-panel hidden">
+            <div class="panel">
+              <div class="panel-header">Volume Simulator</div>
+              <div class="panel-content">
+                <p style="color: var(--text-secondary); font-size: 11px; margin-bottom: 12px;">
+                  Simulate crypto volume to test gameplay. Higher volume = stronger ball.
+                </p>
+                <div id="volume-balls-list">
+                  <!-- Populated by JavaScript -->
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 15px;">
+                  <button class="toolbar-btn" id="btn-randomize-volume" style="flex:1">Randomize</button>
+                </div>
+                <div class="control-group" style="margin-top: 15px;">
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); cursor: pointer;">
+                    <input type="checkbox" id="chk-auto-fluctuate">
+                    Auto-Fluctuate (simulate trading)
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">Volume Rankings</div>
+              <div class="panel-content">
+                <div id="volume-rankings">
+                  <!-- Populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">Boss Fight Test</div>
+              <div class="panel-content">
+                <div class="control-group">
+                  <label class="control-label">Boss Pattern</label>
+                  <select id="boss-pattern" class="control-input">
+                    <option value="spiral">Spiral</option>
+                    <option value="spread">Spread</option>
+                    <option value="aimed">Aimed</option>
+                    <option value="random">Random</option>
+                    <option value="burst">Burst</option>
+                  </select>
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Boss HP</label>
+                  <input type="number" id="boss-hp" class="control-input" value="100" min="10" max="1000" step="10">
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 15px;">
+                  <button class="toolbar-btn" id="btn-spawn-boss" style="flex:1; background: #cc3300;">Spawn Boss</button>
+                  <button class="toolbar-btn" id="btn-remove-boss" style="flex:1;">Remove Boss</button>
+                </div>
+                <div id="boss-status" style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);">
+                  No boss spawned
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Game Log</span>
+                <div style="display: flex; gap: 4px;">
+                  <button id="btn-export-game-log" style="font-size: 10px; padding: 2px 6px; background: #3498db; border: none; color: white; border-radius: 3px; cursor: pointer;">Export</button>
+                  <button id="btn-clear-log" style="font-size: 10px; padding: 2px 6px; background: #4a5568; border: none; color: white; border-radius: 3px; cursor: pointer;">Clear</button>
+                </div>
+              </div>
+              <div class="panel-content" style="padding: 0;">
+                <div id="game-log" style="height: 200px; overflow-y: auto; font-size: 11px; font-family: monospace; background: #1a1a2e; padding: 8px;">
+                  <div style="color: #666;">Waiting for game events...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stats Panel -->
+          <div id="panel-stats" class="tab-panel hidden">
+            <div class="panel">
+              <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Statistics Dashboard</span>
+                <div style="display: flex; gap: 4px;">
+                  <button id="btn-export-stats" style="font-size: 10px; padding: 2px 6px; background: #3498db; border: none; color: white; border-radius: 3px; cursor: pointer;">Export</button>
+                  <button id="btn-reset-stats" style="font-size: 10px; padding: 2px 6px; background: #e74c3c; border: none; color: white; border-radius: 3px; cursor: pointer;">Reset</button>
+                </div>
+              </div>
+              <div class="panel-content">
+                <div id="stats-summary" style="margin-bottom: 12px; font-size: 11px; color: var(--text-secondary);">
+                  <div style="display: flex; justify-content: space-between;">
+                    <span>Total Races:</span>
+                    <span id="stat-total-races">0</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span>Total Chains:</span>
+                    <span id="stat-total-chains">0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">Ball Win Rates</div>
+              <div class="panel-content" style="padding: 8px;">
+                <div id="stats-ball-winrates" style="font-size: 11px;">
+                  <!-- Populated by JavaScript -->
+                  <div style="color: #666;">No data yet. Play some races!</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">Weapon Effectiveness</div>
+              <div class="panel-content" style="padding: 8px;">
+                <div id="stats-weapons" style="font-size: 11px; max-height: 200px; overflow-y: auto;">
+                  <!-- Populated by JavaScript -->
+                  <div style="color: #666;">No weapon data yet.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">Comeback Stats</div>
+              <div class="panel-content" style="padding: 8px;">
+                <div id="stats-comebacks" style="font-size: 11px;">
+                  <!-- Populated by JavaScript -->
+                  <div style="color: #666;">No comeback data yet.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">Recent Races</div>
+              <div class="panel-content" style="padding: 0;">
+                <div id="stats-recent-races" style="max-height: 150px; overflow-y: auto; font-size: 10px; font-family: monospace; background: #1a1a2e; padding: 8px;">
+                  <div style="color: #666;">No race history yet.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header" style="background: #2a4a2a;">Turbo Mode</div>
+              <div class="panel-content">
+                <p style="color: var(--text-secondary); font-size: 10px; margin-bottom: 10px;">
+                  Run the REAL game at high speed. Watch actual physics!
+                </p>
+                <div class="control-group" style="margin-bottom: 8px;">
+                  <label class="control-label" style="font-size: 11px;">Speed</label>
+                  <select id="turbo-speed" style="width: 100%; padding: 6px; background: #2a2a3e; border: 1px solid #444; color: white; border-radius: 4px;">
+                    <option value="1">1x (Normal)</option>
+                    <option value="2">2x Fast</option>
+                    <option value="4" selected>4x Turbo</option>
+                    <option value="8">8x Ultra</option>
+                  </select>
+                </div>
+                <div class="control-group" style="margin-bottom: 8px;">
+                  <label class="control-label" style="font-size: 11px;">Chains to Run</label>
+                  <input type="number" id="turbo-chain-count" value="5" min="1" max="50" style="width: 100%; padding: 6px; background: #2a2a3e; border: 1px solid #444; color: white; border-radius: 4px;">
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 10px;">
+                  <button class="toolbar-btn" id="btn-start-turbo" style="flex: 1; background: #f39c12;">Start Turbo</button>
+                  <button class="toolbar-btn" id="btn-stop-turbo" style="flex: 1; background: #e74c3c;" disabled>Stop</button>
+                </div>
+                <div id="turbo-progress" style="margin-top: 10px; display: none;">
+                  <div style="background: #1a1a2e; border-radius: 4px; overflow: hidden; height: 20px;">
+                    <div id="turbo-progress-bar" style="background: #f39c12; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                  </div>
+                  <div id="turbo-status" style="font-size: 10px; color: #888; margin-top: 4px; text-align: center;">
+                    Ready
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./bundle.js"></script>
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Physics Auto-Test</title>
+    <style>
+        body {
+            margin: 0;
+            background: #1a1a2e;
+            color: #eee;
+            font-family: monospace;
+            padding: 20px;
+        }
+        #game-container {
+            display: inline-block;
+            border: 2px solid #333;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #0a0a15;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .stat { color: #00d4ff; }
+        .warn { color: #f39c12; }
+        .error { color: #e74c3c; }
+        .good { color: #2ecc71; }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #16213e;
+            border-radius: 5px;
+        }
+        #jsonOutput {
+            margin-top: 20px;
+            padding: 10px;
+            background: #0a0a15;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 11px;
+            white-space: pre;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+    <h2>Physics Auto-Test (15 seconds)</h2>
+    <div id="status">Initializing...</div>
+    <div id="game-container"></div>
+    <div id="results"></div>
+    <div id="log"></div>
+    <h3>JSON Output (copy this):</h3>
+    <div id="jsonOutput"></div>
+
+    <script>
+        const TEST_DURATION = 15000; // 15 seconds
+        const LOG_DIV = document.getElementById('log');
+        const STATUS_DIV = document.getElementById('status');
+        const RESULTS_DIV = document.getElementById('results');
+        const JSON_DIV = document.getElementById('jsonOutput');
+
+        function log(msg, className = '') {
+            const line = document.createElement('div');
+            line.className = className;
+            line.textContent = `[${(Date.now() / 1000).toFixed(1)}s] ${msg}`;
+            LOG_DIV.appendChild(line);
+            LOG_DIV.scrollTop = LOG_DIV.scrollHeight;
+        }
+
+        // Physics test scene
+        class TestScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'TestScene' });
+                this.balls = [];
+                this.bounceLog = [];
+                this.recentCollisions = new Map();
+                this.collisionDebounceMs = 100;
+                this.trapDetectionWindow = 500;
+                this.trapBounceThreshold = 6;
+                this.ballSpeed = 5;
+                this.gameWidth = 600;
+                this.gameHeight = 500;
+                this.trapEscapes = 0;
+                this.debounceSkips = 0;
+            }
+
+            create() {
+                log('Scene created, setting up test environment...');
+
+                // Walls
+                const opts = { isStatic: true, friction: 0, restitution: 1, label: 'wall' };
+                this.matter.add.rectangle(-10, this.gameHeight/2, 20, this.gameHeight, opts);
+                this.matter.add.rectangle(this.gameWidth + 10, this.gameHeight/2, 20, this.gameHeight, opts);
+                this.matter.add.rectangle(this.gameWidth/2, -10, this.gameWidth, 20, opts);
+                this.matter.add.rectangle(this.gameWidth/2, this.gameHeight + 10, this.gameWidth, 20, opts);
+
+                // Draw walls
+                const wallGfx = this.add.graphics();
+                wallGfx.fillStyle(0x333333, 1);
+                wallGfx.fillRect(0, 0, 5, this.gameHeight);
+                wallGfx.fillRect(this.gameWidth - 5, 0, 5, this.gameHeight);
+                wallGfx.fillRect(0, 0, this.gameWidth, 5);
+                wallGfx.fillRect(0, this.gameHeight - 5, this.gameWidth, 5);
+
+                // Create rotating obstacle in center
+                this.rotatingObs = this.matter.add.rectangle(300, 250, 120, 20, {
+                    isStatic: true, friction: 0, restitution: 1, label: 'obstacle'
+                });
+                this.rotatingGfx = this.add.graphics();
+                this.rotatingGfx.fillStyle(0xe74c3c, 1);
+                this.rotatingGfx.fillRect(-60, -10, 120, 20);
+                this.rotatingGfx.x = 300;
+                this.rotatingGfx.y = 250;
+
+                // Add some static obstacles
+                const obsGfx = this.add.graphics();
+                obsGfx.fillStyle(0x4a5568, 1);
+
+                const staticObs = [
+                    { x: 150, y: 150, w: 80, h: 15, angle: 0.3 },
+                    { x: 450, y: 150, w: 80, h: 15, angle: -0.3 },
+                    { x: 150, y: 350, w: 80, h: 15, angle: -0.2 },
+                    { x: 450, y: 350, w: 80, h: 15, angle: 0.2 },
+                ];
+
+                staticObs.forEach(o => {
+                    this.matter.add.rectangle(o.x, o.y, o.w, o.h, {
+                        isStatic: true, friction: 0, restitution: 1, angle: o.angle, label: 'obstacle'
+                    });
+                    obsGfx.save();
+                    obsGfx.translateCanvas(o.x, o.y);
+                    obsGfx.rotateCanvas(o.angle);
+                    obsGfx.fillRect(-o.w/2, -o.h/2, o.w, o.h);
+                    obsGfx.restore();
+                });
+
+                // Create 5 balls
+                const colors = [
+                    { name: 'Red', color: 0xe74c3c },
+                    { name: 'Blue', color: 0x3498db },
+                    { name: 'Green', color: 0x2ecc71 },
+                    { name: 'Yellow', color: 0xf1c40f },
+                    { name: 'Purple', color: 0x9b59b6 }
+                ];
+
+                colors.forEach((c, i) => {
+                    const x = 100 + i * 100;
+                    const y = this.gameHeight - 50;
+
+                    const body = this.matter.add.circle(x, y, 12, {
+                        restitution: 1, friction: 0, frictionAir: 0, label: 'ball'
+                    });
+
+                    const gfx = this.add.graphics();
+                    gfx.fillStyle(c.color, 1);
+                    gfx.fillCircle(0, 0, 12);
+                    gfx.lineStyle(2, 0x000000);
+                    gfx.strokeCircle(0, 0, 12);
+
+                    this.balls.push({ body, graphics: gfx, name: c.name, color: c.color });
+                });
+
+                log(`Created ${this.balls.length} balls and obstacles`);
+
+                // Collision handler with all the fixes
+                this.matter.world.on('collisionstart', (event) => {
+                    const now = Date.now();
+
+                    event.pairs.forEach(pair => {
+                        let ballBody = null;
+                        let otherBody = null;
+
+                        if (pair.bodyA.label === 'ball') {
+                            ballBody = pair.bodyA;
+                            otherBody = pair.bodyB;
+                        } else if (pair.bodyB.label === 'ball') {
+                            ballBody = pair.bodyB;
+                            otherBody = pair.bodyA;
+                        }
+
+                        if (!ballBody) return;
+
+                        const ball = this.balls.find(b => b.body === ballBody);
+                        if (!ball) return;
+
+                        const obstacleId = otherBody.id;
+                        const isObstacle = otherBody.label === 'obstacle';
+
+                        // Debounce and trap detection for obstacles
+                        if (isObstacle) {
+                            if (!this.recentCollisions.has(ball.name)) {
+                                this.recentCollisions.set(ball.name, []);
+                            }
+                            const history = this.recentCollisions.get(ball.name);
+
+                            // Clean old entries
+                            while (history.length > 0 && now - history[0].time > this.trapDetectionWindow) {
+                                history.shift();
+                            }
+
+                            // Debounce check
+                            const recent = history.find(c => c.obstacleId === obstacleId && now - c.time < this.collisionDebounceMs);
+                            if (recent) {
+                                this.debounceSkips++;
+                                return;
+                            }
+
+                            history.push({ obstacleId, time: now });
+
+                            // Trap detection
+                            if (history.length >= this.trapBounceThreshold) {
+                                this.trapEscapes++;
+                                const escapeAngle = Math.random() * Math.PI * 2;
+                                this.matter.body.setVelocity(ballBody, {
+                                    x: Math.cos(escapeAngle) * this.ballSpeed * 1.5,
+                                    y: Math.sin(escapeAngle) * this.ballSpeed * 1.5
+                                });
+                                history.length = 0;
+
+                                this.bounceLog.push({
+                                    time: now,
+                                    ball: ball.name,
+                                    position: { x: Math.round(ballBody.position.x), y: Math.round(ballBody.position.y) },
+                                    hitType: 'TRAP_ESCAPE',
+                                    angleChange: 'N/A'
+                                });
+                                return;
+                            }
+                        }
+
+                        // Calculate bounce
+                        const preVel = { x: ballBody.velocity.x, y: ballBody.velocity.y };
+                        const pos = { x: ballBody.position.x, y: ballBody.position.y };
+                        const preAngle = Math.atan2(preVel.y, preVel.x);
+                        const speed = Math.sqrt(preVel.x * preVel.x + preVel.y * preVel.y);
+
+                        if (speed < 0.1) return;
+
+                        let angle = preAngle;
+
+                        // Corner detection
+                        const nearLeft = pos.x < 30;
+                        const nearRight = pos.x > this.gameWidth - 30;
+                        const nearTop = pos.y < 30;
+                        const nearBottom = pos.y > this.gameHeight - 30;
+                        const isCorner = (nearLeft || nearRight) && (nearTop || nearBottom);
+
+                        let hitType = otherBody.label;
+
+                        if (isCorner) {
+                            const dirX = nearLeft ? 1 : -1;
+                            const dirY = nearTop ? 1 : -1;
+                            angle = Math.atan2(dirY, dirX) + (Math.random() - 0.5) * 0.5;
+                            hitType = 'CORNER';
+                        } else if (otherBody.label === 'wall') {
+                            const twist = (0.3 + Math.random() * 0.5) * (Math.random() < 0.5 ? 1 : -1);
+                            angle += twist;
+                        } else {
+                            // Obstacle: minimum 25 degree deflection
+                            const minDeflection = 25 * (Math.PI / 180);
+                            const twist = (minDeflection + Math.random() * 0.3) * (Math.random() < 0.5 ? 1 : -1);
+                            angle += twist;
+                        }
+
+                        const newVelX = Math.cos(angle) * this.ballSpeed;
+                        const newVelY = Math.sin(angle) * this.ballSpeed;
+                        this.matter.body.setVelocity(ballBody, { x: newVelX, y: newVelY });
+
+                        // Log
+                        const postAngleDeg = angle * 180 / Math.PI;
+                        const preAngleDeg = preAngle * 180 / Math.PI;
+                        const angleChange = postAngleDeg - preAngleDeg;
+
+                        this.bounceLog.push({
+                            time: now,
+                            ball: ball.name,
+                            position: { x: Math.round(pos.x), y: Math.round(pos.y) },
+                            hitType: hitType,
+                            preVelocity: { x: preVel.x.toFixed(2), y: preVel.y.toFixed(2) },
+                            postVelocity: { x: newVelX.toFixed(2), y: newVelY.toFixed(2) },
+                            angleChange: angleChange.toFixed(1)
+                        });
+                    });
+                });
+
+                // Start race
+                log('Starting race...');
+                this.balls.forEach(ball => {
+                    const angle = (-Math.PI / 2) + (Math.random() - 0.5) * (Math.PI / 2);
+                    this.matter.body.setVelocity(ball.body, {
+                        x: Math.cos(angle) * this.ballSpeed,
+                        y: Math.sin(angle) * this.ballSpeed
+                    });
+                });
+
+                this.startTime = Date.now();
+
+                // End test after duration
+                this.time.delayedCall(TEST_DURATION, () => {
+                    this.endTest();
+                });
+            }
+
+            update(time, delta) {
+                const deltaSeconds = delta / 1000;
+
+                // Rotate obstacle (2 RPM)
+                const rotationAmount = (2 * Math.PI * 2 / 60) * deltaSeconds;
+                this.rotatingGfx.rotation += rotationAmount;
+                this.matter.body.setAngle(this.rotatingObs, this.rotatingObs.angle + rotationAmount);
+
+                // Update ball graphics and maintain speed
+                this.balls.forEach(ball => {
+                    ball.graphics.x = ball.body.position.x;
+                    ball.graphics.y = ball.body.position.y;
+
+                    const vel = ball.body.velocity;
+                    const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+
+                    if (speed < 0.5) {
+                        const angle = Math.random() * Math.PI * 2;
+                        this.matter.body.setVelocity(ball.body, {
+                            x: Math.cos(angle) * this.ballSpeed,
+                            y: Math.sin(angle) * this.ballSpeed
+                        });
+                    } else if (Math.abs(speed - this.ballSpeed) > 0.1) {
+                        const scale = this.ballSpeed / speed;
+                        this.matter.body.setVelocity(ball.body, {
+                            x: vel.x * scale,
+                            y: vel.y * scale
+                        });
+                    }
+                });
+
+                // Update status
+                const elapsed = ((Date.now() - this.startTime) / 1000).toFixed(1);
+                STATUS_DIV.textContent = `Running: ${elapsed}s / ${TEST_DURATION/1000}s | Bounces: ${this.bounceLog.length} | Trap Escapes: ${this.trapEscapes} | Debounce Skips: ${this.debounceSkips}`;
+            }
+
+            endTest() {
+                log('Test complete! Analyzing results...', 'stat');
+
+                const results = this.analyzeResults();
+                this.displayResults(results);
+
+                // Output JSON
+                const jsonData = {
+                    timestamp: new Date().toISOString(),
+                    duration: TEST_DURATION,
+                    totalBounces: this.bounceLog.length,
+                    trapEscapes: this.trapEscapes,
+                    debounceSkips: this.debounceSkips,
+                    analysis: results,
+                    bounces: this.bounceLog
+                };
+
+                JSON_DIV.textContent = JSON.stringify(jsonData, null, 2);
+
+                // Auto-download results
+                const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `auto-test-results-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                log('Results auto-downloaded!', 'good');
+            }
+
+            analyzeResults() {
+                const bounces = this.bounceLog;
+                const wallBounces = bounces.filter(b => b.hitType === 'wall');
+                const obstacleBounces = bounces.filter(b => b.hitType === 'obstacle');
+                const cornerBounces = bounces.filter(b => b.hitType === 'CORNER');
+                const trapEscapes = bounces.filter(b => b.hitType === 'TRAP_ESCAPE');
+
+                // Analyze angle changes
+                const obstacleAngles = obstacleBounces.map(b => Math.abs(parseFloat(b.angleChange)));
+                const wallAngles = wallBounces.map(b => Math.abs(parseFloat(b.angleChange)));
+
+                const avgObstacleAngle = obstacleAngles.length > 0
+                    ? obstacleAngles.reduce((a, b) => a + b, 0) / obstacleAngles.length
+                    : 0;
+                const minObstacleAngle = obstacleAngles.length > 0 ? Math.min(...obstacleAngles) : 0;
+                const avgWallAngle = wallAngles.length > 0
+                    ? wallAngles.reduce((a, b) => a + b, 0) / wallAngles.length
+                    : 0;
+
+                // Check for suspicious patterns
+                const smallAngleBounces = obstacleBounces.filter(b => Math.abs(parseFloat(b.angleChange)) < 20);
+                const verySmallAngleBounces = obstacleBounces.filter(b => Math.abs(parseFloat(b.angleChange)) < 10);
+
+                // Check for rapid bounces (same ball, close timestamps)
+                let rapidBounceSequences = 0;
+                const byBall = {};
+                bounces.forEach(b => {
+                    if (!byBall[b.ball]) byBall[b.ball] = [];
+                    byBall[b.ball].push(b);
+                });
+
+                for (const [ball, ballBounces] of Object.entries(byBall)) {
+                    let consecutiveRapid = 0;
+                    for (let i = 1; i < ballBounces.length; i++) {
+                        if (ballBounces[i].time - ballBounces[i-1].time < 50) {
+                            consecutiveRapid++;
+                            if (consecutiveRapid >= 3) {
+                                rapidBounceSequences++;
+                                consecutiveRapid = 0;
+                            }
+                        } else {
+                            consecutiveRapid = 0;
+                        }
+                    }
+                }
+
+                return {
+                    total: bounces.length,
+                    walls: wallBounces.length,
+                    obstacles: obstacleBounces.length,
+                    corners: cornerBounces.length,
+                    trapEscapes: trapEscapes.length,
+                    debounceSkips: this.debounceSkips,
+                    avgObstacleAngle: avgObstacleAngle.toFixed(1),
+                    minObstacleAngle: minObstacleAngle.toFixed(1),
+                    avgWallAngle: avgWallAngle.toFixed(1),
+                    smallAngleBounces: smallAngleBounces.length,
+                    verySmallAngleBounces: verySmallAngleBounces.length,
+                    rapidBounceSequences: rapidBounceSequences,
+                    bouncesPerBall: Object.fromEntries(
+                        Object.entries(byBall).map(([name, b]) => [name, b.length])
+                    )
+                };
+            }
+
+            displayResults(r) {
+                let html = '<h3>Test Results</h3>';
+                html += `<p><span class="stat">Total Bounces:</span> ${r.total}</p>`;
+                html += `<p>Wall: ${r.walls} | Obstacle: ${r.obstacles} | Corner: ${r.corners}</p>`;
+                html += `<p><span class="stat">Trap Escapes:</span> ${r.trapEscapes} (balls that got stuck and were freed)</p>`;
+                html += `<p><span class="stat">Debounce Skips:</span> ${r.debounceSkips} (micro-bounces prevented)</p>`;
+                html += `<p><span class="stat">Avg Obstacle Angle Change:</span> ${r.avgObstacleAngle}° (min: ${r.minObstacleAngle}°)</p>`;
+                html += `<p><span class="stat">Avg Wall Angle Change:</span> ${r.avgWallAngle}°</p>`;
+
+                // Quality assessment
+                html += '<h4>Quality Assessment:</h4>';
+
+                if (r.verySmallAngleBounces === 0) {
+                    html += `<p class="good">✓ No very small angle bounces (< 10°)</p>`;
+                } else {
+                    html += `<p class="error">✗ ${r.verySmallAngleBounces} very small angle bounces (< 10°)</p>`;
+                }
+
+                if (r.smallAngleBounces < r.obstacles * 0.1) {
+                    html += `<p class="good">✓ Small angle bounces < 10% (${r.smallAngleBounces}/${r.obstacles})</p>`;
+                } else {
+                    html += `<p class="warn">⚠ ${r.smallAngleBounces} small angle bounces (< 20°) - ${((r.smallAngleBounces/r.obstacles)*100).toFixed(0)}%</p>`;
+                }
+
+                if (r.rapidBounceSequences === 0) {
+                    html += `<p class="good">✓ No rapid bounce sequences detected</p>`;
+                } else {
+                    html += `<p class="error">✗ ${r.rapidBounceSequences} rapid bounce sequences (balls vibrating)</p>`;
+                }
+
+                if (parseFloat(r.avgObstacleAngle) >= 25) {
+                    html += `<p class="good">✓ Avg obstacle deflection is good (${r.avgObstacleAngle}° >= 25°)</p>`;
+                } else {
+                    html += `<p class="warn">⚠ Avg obstacle deflection is low (${r.avgObstacleAngle}° < 25°)</p>`;
+                }
+
+                html += '<h4>Bounces per Ball:</h4>';
+                for (const [name, count] of Object.entries(r.bouncesPerBall)) {
+                    html += `<p>${name}: ${count}</p>`;
+                }
+
+                RESULTS_DIV.innerHTML = html;
+            }
+        }
+
+        // Create game
+        const config = {
+            type: Phaser.AUTO,
+            width: 600,
+            height: 500,
+            parent: 'game-container',
+            backgroundColor: '#2d2d44',
+            physics: {
+                default: 'matter',
+                matter: {
+                    gravity: { y: 0 },
+                    debug: false
+                }
+            },
+            scene: TestScene
+        };
+
+        log('Starting Phaser...');
+        const game = new Phaser.Game(config);
+    </script>
+</body>
+</html>

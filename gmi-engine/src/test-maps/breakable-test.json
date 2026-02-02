@@ -1,0 +1,177 @@
+{
+  "id": "breakable-test-001",
+  "name": "Breakable Barrier Test",
+  "createdAt": 1738252800000,
+  "updatedAt": 1738252800000,
+  "width": 800,
+  "height": 700,
+  "data": {
+    "startZone": {
+      "x": 50,
+      "y": 50,
+      "width": 700,
+      "height": 80
+    },
+    "finishZone": {
+      "x": 200,
+      "y": 620,
+      "width": 400,
+      "height": 60
+    },
+    "obstacles": [
+      {
+        "id": "breakable-wall-1",
+        "type": "rectangle",
+        "x": 50,
+        "y": 550,
+        "width": 150,
+        "height": 25,
+        "color": "#e74c3c",
+        "behavior": "breakable",
+        "health": 1,
+        "maxHealth": 1,
+        "breakableBy": []
+      },
+      {
+        "id": "breakable-wall-2",
+        "type": "rectangle",
+        "x": 220,
+        "y": 550,
+        "width": 150,
+        "height": 25,
+        "color": "#3498db",
+        "behavior": "breakable",
+        "health": 2,
+        "maxHealth": 2,
+        "breakableBy": []
+      },
+      {
+        "id": "breakable-wall-3",
+        "type": "rectangle",
+        "x": 390,
+        "y": 550,
+        "width": 150,
+        "height": 25,
+        "color": "#9b59b6",
+        "behavior": "breakable",
+        "health": 3,
+        "maxHealth": 3,
+        "breakableBy": []
+      },
+      {
+        "id": "breakable-wall-4",
+        "type": "rectangle",
+        "x": 560,
+        "y": 550,
+        "width": 190,
+        "height": 25,
+        "color": "#2ecc71",
+        "behavior": "breakable",
+        "health": 2,
+        "maxHealth": 2,
+        "breakableBy": []
+      },
+      {
+        "id": "color-locked-red",
+        "type": "rectangle",
+        "x": 150,
+        "y": 480,
+        "width": 120,
+        "height": 20,
+        "color": "#ff6b6b",
+        "behavior": "breakable",
+        "health": 1,
+        "maxHealth": 1,
+        "breakableBy": ["Red"]
+      },
+      {
+        "id": "color-locked-blue",
+        "type": "rectangle",
+        "x": 340,
+        "y": 480,
+        "width": 120,
+        "height": 20,
+        "color": "#4dabf7",
+        "behavior": "breakable",
+        "health": 1,
+        "maxHealth": 1,
+        "breakableBy": ["Blue"]
+      },
+      {
+        "id": "color-locked-green",
+        "type": "rectangle",
+        "x": 530,
+        "y": 480,
+        "width": 120,
+        "height": 20,
+        "color": "#51cf66",
+        "behavior": "breakable",
+        "health": 1,
+        "maxHealth": 1,
+        "breakableBy": ["Green"]
+      },
+      {
+        "id": "deflector-1",
+        "type": "rectangle",
+        "x": 100,
+        "y": 300,
+        "width": 150,
+        "height": 15,
+        "color": "#4a5568",
+        "behavior": "static",
+        "angle": 20
+      },
+      {
+        "id": "deflector-2",
+        "type": "rectangle",
+        "x": 550,
+        "y": 300,
+        "width": 150,
+        "height": 15,
+        "color": "#4a5568",
+        "behavior": "static",
+        "angle": -20
+      },
+      {
+        "id": "center-platform",
+        "type": "rectangle",
+        "x": 300,
+        "y": 350,
+        "width": 200,
+        "height": 15,
+        "color": "#4a5568",
+        "behavior": "static"
+      },
+      {
+        "id": "bumper-left",
+        "type": "circle",
+        "x": 200,
+        "y": 420,
+        "radius": 30,
+        "color": "#f39c12",
+        "behavior": "static"
+      },
+      {
+        "id": "bumper-right",
+        "type": "circle",
+        "x": 600,
+        "y": 420,
+        "radius": 30,
+        "color": "#f39c12",
+        "behavior": "static"
+      },
+      {
+        "id": "rotating-deflector",
+        "type": "rectangle",
+        "x": 400,
+        "y": 250,
+        "width": 120,
+        "height": 15,
+        "color": "#3498db",
+        "behavior": "rotating",
+        "rotationSpeed": 2,
+        "rotationDirection": "cw"
+      }
+    ]
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "name": "Level 2 - Weapon Arena",
+  "width": 800,
+  "height": 700,
+  "data": {
+    "startZone": {
+      "x": 50,
+      "y": 600,
+      "width": 700,
+      "height": 60
+    },
+    "finishZone": {
+      "x": 50,
+      "y": 30,
+      "width": 700,
+      "height": 40
+    },
+    "obstacles": [
+      {
+        "id": "obs-wall-left",
+        "type": "rectangle",
+        "x": 0,
+        "y": 200,
+        "width": 150,
+        "height": 25,
+        "color": "#e74c3c",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-wall-right",
+        "type": "rectangle",
+        "x": 650,
+        "y": 200,
+        "width": 150,
+        "height": 25,
+        "color": "#e74c3c",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-moving-1",
+        "type": "rectangle",
+        "x": 200,
+        "y": 350,
+        "width": 120,
+        "height": 25,
+        "color": "#f39c12",
+        "behavior": "moving",
+        "moveDirection": "horizontal",
+        "moveDistance": 200,
+        "moveSpeed": 60
+      },
+      {
+        "id": "obs-moving-2",
+        "type": "rectangle",
+        "x": 480,
+        "y": 350,
+        "width": 120,
+        "height": 25,
+        "color": "#f39c12",
+        "behavior": "moving",
+        "moveDirection": "horizontal",
+        "moveDistance": 200,
+        "moveSpeed": 60
+      },
+      {
+        "id": "obs-spinner-1",
+        "type": "rectangle",
+        "x": 350,
+        "y": 480,
+        "width": 100,
+        "height": 20,
+        "color": "#9b59b6",
+        "behavior": "rotating",
+        "rotationSpeed": 3,
+        "rotationDirection": "cw"
+      },
+      {
+        "id": "obs-breakable-1",
+        "type": "rectangle",
+        "x": 300,
+        "y": 150,
+        "width": 80,
+        "height": 80,
+        "color": "#2ecc71",
+        "behavior": "breakable",
+        "health": 3,
+        "breakableBy": ["Red", "Blue", "Green", "Yellow", "Purple"]
+      },
+      {
+        "id": "obs-breakable-2",
+        "type": "rectangle",
+        "x": 420,
+        "y": 150,
+        "width": 80,
+        "height": 80,
+        "color": "#2ecc71",
+        "behavior": "breakable",
+        "health": 3,
+        "breakableBy": ["Red", "Blue", "Green", "Yellow", "Purple"]
+      }
+    ],
+    "itemSpawns": [
+      {
+        "id": "item-wep-1",
+        "x": 100,
+        "y": 450,
+        "itemType": "weapon_crate",
+        "spawnOnStart": true,
+        "respawnTime": 8000
+      },
+      {
+        "id": "item-wep-2",
+        "x": 700,
+        "y": 450,
+        "itemType": "weapon_crate",
+        "spawnOnStart": true,
+        "respawnTime": 8000
+      },
+      {
+        "id": "item-wep-3",
+        "x": 400,
+        "y": 550,
+        "itemType": "weapon_crate",
+        "spawnOnStart": true,
+        "respawnTime": 5000
+      },
+      {
+        "id": "item-damage",
+        "x": 400,
+        "y": 280,
+        "itemType": "damage_boost",
+        "spawnOnStart": true,
+        "respawnTime": 12000
+      },
+      {
+        "id": "item-speed-1",
+        "x": 200,
+        "y": 280,
+        "itemType": "speed_boost",
+        "spawnOnStart": true,
+        "respawnTime": 6000
+      },
+      {
+        "id": "item-speed-2",
+        "x": 600,
+        "y": 280,
+        "itemType": "speed_boost",
+        "spawnOnStart": true,
+        "respawnTime": 6000
+      },
+      {
+        "id": "item-ghost",
+        "x": 400,
+        "y": 400,
+        "itemType": "ghost",
+        "spawnOnStart": true,
+        "respawnTime": 15000
+      },
+      {
+        "id": "item-heal-1",
+        "x": 100,
+        "y": 280,
+        "itemType": "health_pack",
+        "spawnOnStart": true,
+        "respawnTime": 10000
+      },
+      {
+        "id": "item-heal-2",
+        "x": 700,
+        "y": 280,
+        "itemType": "health_pack",
+        "spawnOnStart": true,
+        "respawnTime": 10000
+      }
+    ],
+    "animations": null,
+    "bossConfig": null
+  },
+  "exportedAt": 1738310400000,
+  "version": "1.0"
+}

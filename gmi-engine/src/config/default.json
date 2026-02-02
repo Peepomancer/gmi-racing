@@ -1,0 +1,38 @@
+{
+  "race": {
+    "duration": 60,
+    "ballCount": 5
+  },
+  "balls": {
+    "radius": 12,
+    "density": 0.5,
+    "colors": [
+      { "name": "Red", "color": "#e53935" },
+      { "name": "Blue", "color": "#1e88e5" },
+      { "name": "Green", "color": "#43a047" },
+      { "name": "Yellow", "color": "#fdd835" },
+      { "name": "Purple", "color": "#8e24aa" },
+      { "name": "Orange", "color": "#fb8c00" },
+      { "name": "Cyan", "color": "#00acc1" },
+      { "name": "Pink", "color": "#d81b60" },
+      { "name": "Lime", "color": "#7cb342" },
+      { "name": "White", "color": "#fafafa" }
+    ]
+  },
+  "map": {
+    "noiseScale": 50,
+    "platformDensity": 0.5,
+    "seed": 12345
+  },
+  "physics": {
+    "gravity": 5,
+    "bounce": 1.0,
+    "friction": 0,
+    "airResistance": 0
+  },
+  "items": {
+    "enabled": false,
+    "spawnRate": 5,
+    "types": []
+  }
+}

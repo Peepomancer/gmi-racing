@@ -1,0 +1,116 @@
+{
+  "name": "Level 1 - Item Intro",
+  "width": 800,
+  "height": 600,
+  "data": {
+    "startZone": {
+      "x": 50,
+      "y": 500,
+      "width": 700,
+      "height": 60
+    },
+    "finishZone": {
+      "x": 50,
+      "y": 30,
+      "width": 700,
+      "height": 40
+    },
+    "obstacles": [
+      {
+        "id": "obs-1",
+        "type": "rectangle",
+        "x": 0,
+        "y": 250,
+        "width": 250,
+        "height": 25,
+        "color": "#e74c3c",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-2",
+        "type": "rectangle",
+        "x": 550,
+        "y": 250,
+        "width": 250,
+        "height": 25,
+        "color": "#e74c3c",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-3",
+        "type": "rectangle",
+        "x": 200,
+        "y": 380,
+        "width": 400,
+        "height": 25,
+        "color": "#3498db",
+        "behavior": "static"
+      },
+      {
+        "id": "obs-4",
+        "type": "circle",
+        "x": 400,
+        "y": 150,
+        "radius": 40,
+        "color": "#9b59b6",
+        "behavior": "rotating",
+        "rotationSpeed": 2,
+        "rotationDirection": "cw"
+      }
+    ],
+    "itemSpawns": [
+      {
+        "id": "item-1",
+        "x": 150,
+        "y": 420,
+        "itemType": "weapon_crate",
+        "spawnOnStart": true,
+        "respawnTime": 0
+      },
+      {
+        "id": "item-2",
+        "x": 400,
+        "y": 420,
+        "itemType": "random",
+        "spawnOnStart": true,
+        "respawnTime": 0
+      },
+      {
+        "id": "item-3",
+        "x": 650,
+        "y": 420,
+        "itemType": "weapon_crate",
+        "spawnOnStart": true,
+        "respawnTime": 0
+      },
+      {
+        "id": "item-4",
+        "x": 400,
+        "y": 300,
+        "itemType": "speed_boost",
+        "spawnOnStart": true,
+        "respawnTime": 5000
+      },
+      {
+        "id": "item-5",
+        "x": 200,
+        "y": 180,
+        "itemType": "health_pack",
+        "spawnOnStart": true,
+        "respawnTime": 8000
+      },
+      {
+        "id": "item-6",
+        "x": 600,
+        "y": 180,
+        "itemType": "shield",
+        "spawnOnStart": true,
+        "respawnTime": 10000
+      }
+    ],
+    "animations": null,
+    "bossConfig": null
+  },
+  "exportedAt": 1738310400000,
+  "version": "1.0"
+}

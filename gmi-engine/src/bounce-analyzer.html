@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bounce Analyzer - GMI Racing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #00d4ff;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .left-panel {
+            width: 300px;
+            flex-shrink: 0;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: #0f0f1a;
+            border-radius: 10px;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .right-panel {
+            width: 350px;
+            flex-shrink: 0;
+        }
+
+        .panel {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .panel h3 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .file-input {
+            width: 100%;
+            padding: 10px;
+            background: #0f0f1a;
+            border: 2px dashed #444;
+            border-radius: 5px;
+            color: #eee;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .file-input:hover {
+            border-color: #00d4ff;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #00d4ff;
+            border: none;
+            border-radius: 5px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 5px;
+        }
+
+        button:hover {
+            background: #00b8e6;
+        }
+
+        button.secondary {
+            background: #444;
+            color: #eee;
+        }
+
+        button.secondary:hover {
+            background: #555;
+        }
+
+        #visualCanvas {
+            background: #222;
+            border: 1px solid #444;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: #0f0f1a;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-box .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .stat-box .label {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .bounce-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .bounce-item {
+            background: #0f0f1a;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+
+        .bounce-item:hover {
+            background: #1a1a3a;
+        }
+
+        .bounce-item.selected {
+            border-left-color: #00d4ff;
+            background: #1a1a3a;
+        }
+
+        .bounce-item.suspicious {
+            border-left-color: #ff6b6b;
+        }
+
+        .bounce-item .ball-name {
+            font-weight: bold;
+        }
+
+        .bounce-item .details {
+            font-size: 11px;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .filter-btn {
+            padding: 5px 10px;
+            background: #333;
+            border: none;
+            border-radius: 3px;
+            color: #eee;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .filter-btn.active {
+            background: #00d4ff;
+            color: #1a1a2e;
+        }
+
+        .analysis-result {
+            background: #0f0f1a;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .analysis-result.good {
+            border-left: 3px solid #2ecc71;
+        }
+
+        .analysis-result.warning {
+            border-left: 3px solid #f39c12;
+        }
+
+        .analysis-result.bad {
+            border-left: 3px solid #e74c3c;
+        }
+
+        .selected-bounce-info {
+            background: #0f0f1a;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+
+        .selected-bounce-info h4 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #888;
+        }
+
+        .info-value {
+            font-family: monospace;
+        }
+
+        .velocity-diagram {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .velocity-diagram canvas {
+            background: #1a1a2e;
+            border-radius: 5px;
+        }
+
+        .checkbox-group {
+            margin: 10px 0;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bounce Analyzer</h1>
+
+    <div class="container">
+        <div class="left-panel">
+            <div class="panel">
+                <h3>Load Data</h3>
+                <input type="file" id="bounceLogInput" class="file-input" accept=".json">
+                <p style="font-size: 11px; color: #888; margin-bottom: 10px;">Load bounce log JSON file</p>
+
+                <input type="file" id="mapDataInput" class="file-input" accept=".json">
+                <p style="font-size: 11px; color: #888;">Load map data JSON (optional)</p>
+            </div>
+
+            <div class="panel">
+                <h3>Map Settings</h3>
+                <label style="display: block; margin-bottom: 5px; font-size: 13px;">Map Width:</label>
+                <input type="number" id="mapWidth" value="800" style="width: 100%; padding: 8px; background: #0f0f1a; border: 1px solid #444; color: #eee; border-radius: 5px; margin-bottom: 10px;">
+
+                <label style="display: block; margin-bottom: 5px; font-size: 13px;">Map Height:</label>
+                <input type="number" id="mapHeight" value="600" style="width: 100%; padding: 8px; background: #0f0f1a; border: 1px solid #444; color: #eee; border-radius: 5px; margin-bottom: 10px;">
+
+                <button onclick="updateCanvas()">Apply Size</button>
+            </div>
+
+            <div class="panel">
+                <h3>Display Options</h3>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="showGrid" checked onchange="redraw()"> Show Grid</label>
+                    <label><input type="checkbox" id="showObstacles" checked onchange="redraw()"> Show Obstacles</label>
+                    <label><input type="checkbox" id="showBouncePoints" checked onchange="redraw()"> Show Bounce Points</label>
+                    <label><input type="checkbox" id="showVelocityArrows" checked onchange="redraw()"> Show Velocity Arrows</label>
+                    <label><input type="checkbox" id="showTrajectory" onchange="redraw()"> Show Ball Paths</label>
+                    <label><input type="checkbox" id="highlightSuspicious" checked onchange="redraw()"> Highlight Suspicious</label>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Legend</h3>
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-color" style="background: #3498db;"></div> Pre-bounce</div>
+                    <div class="legend-item"><div class="legend-color" style="background: #2ecc71;"></div> Post-bounce</div>
+                    <div class="legend-item"><div class="legend-color" style="background: #e74c3c;"></div> Suspicious</div>
+                    <div class="legend-item"><div class="legend-color" style="background: #9b59b6;"></div> Wall hit</div>
+                    <div class="legend-item"><div class="legend-color" style="background: #f39c12;"></div> Obstacle hit</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="visualCanvas" width="800" height="600"></canvas>
+        </div>
+
+        <div class="right-panel">
+            <div class="panel">
+                <h3>Statistics</h3>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="value" id="totalBounces">0</div>
+                        <div class="label">Total Bounces</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="value" id="wallBounces">0</div>
+                        <div class="label">Wall Bounces</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="value" id="obstacleBounces">0</div>
+                        <div class="label">Obstacle Bounces</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="value" id="suspiciousBounces">0</div>
+                        <div class="label">Suspicious</div>
+                    </div>
+                </div>
+
+                <div id="analysisResult" class="analysis-result" style="display: none;"></div>
+            </div>
+
+            <div class="panel">
+                <h3>Filter by Ball</h3>
+                <div class="filters" id="ballFilters">
+                    <button class="filter-btn active" data-ball="all">All</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Bounce List</h3>
+                <div class="bounce-list" id="bounceList">
+                    <p style="color: #888; text-align: center; padding: 20px;">Load a bounce log to see bounces</p>
+                </div>
+            </div>
+
+            <div class="panel" id="selectedBouncePanel" style="display: none;">
+                <h3>Selected Bounce</h3>
+                <div class="selected-bounce-info" id="selectedBounceInfo"></div>
+                <div class="velocity-diagram">
+                    <canvas id="velocityCanvas" width="150" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let bounceData = null;
+        let mapData = null;
+        let selectedBounce = null;
+        let activeFilter = 'all';
+
+        const canvas = document.getElementById('visualCanvas');
+        const ctx = canvas.getContext('2d');
+        const velocityCanvas = document.getElementById('velocityCanvas');
+        const velocityCtx = velocityCanvas.getContext('2d');
+
+        // Ball colors
+        const ballColors = {
+            'Red': '#e74c3c',
+            'Blue': '#3498db',
+            'Green': '#2ecc71',
+            'Yellow': '#f1c40f',
+            'Purple': '#9b59b6',
+            'Orange': '#e67e22',
+            'Cyan': '#00d4ff',
+            'Pink': '#ff69b4'
+        };
+
+        // Load bounce log file
+        document.getElementById('bounceLogInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                bounceData = JSON.parse(text);
+                console.log('Loaded bounce data:', bounceData);
+
+                // Extract map size if available
+                if (bounceData.mapSize) {
+                    document.getElementById('mapWidth').value = bounceData.mapSize.width;
+                    document.getElementById('mapHeight').value = bounceData.mapSize.height;
+                    updateCanvas();
+                }
+
+                updateUI();
+                redraw();
+            } catch (err) {
+                alert('Error loading bounce log: ' + err.message);
+            }
+        });
+
+        // Load map data file
+        document.getElementById('mapDataInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                mapData = JSON.parse(text);
+                console.log('Loaded map data:', mapData);
+
+                // Update canvas size if map has dimensions
+                if (mapData.width && mapData.height) {
+                    document.getElementById('mapWidth').value = mapData.width;
+                    document.getElementById('mapHeight').value = mapData.height;
+                    updateCanvas();
+                }
+
+                redraw();
+            } catch (err) {
+                alert('Error loading map data: ' + err.message);
+            }
+        });
+
+        function updateCanvas() {
+            const width = parseInt(document.getElementById('mapWidth').value) || 800;
+            const height = parseInt(document.getElementById('mapHeight').value) || 600;
+            canvas.width = width;
+            canvas.height = height;
+            redraw();
+        }
+
+        function updateUI() {
+            if (!bounceData || !bounceData.bounces) return;
+
+            const bounces = bounceData.bounces;
+
+            // Update stats
+            document.getElementById('totalBounces').textContent = bounces.length;
+            document.getElementById('wallBounces').textContent = bounces.filter(b => b.hitType === 'wall').length;
+            document.getElementById('obstacleBounces').textContent = bounces.filter(b => b.hitType === 'obstacle').length;
+
+            // Calculate suspicious bounces (wall hits with angle change < 20 degrees)
+            const suspicious = bounces.filter(b => isSuspicious(b));
+            document.getElementById('suspiciousBounces').textContent = suspicious.length;
+
+            // Show analysis
+            showAnalysis(bounces, suspicious);
+
+            // Create ball filters
+            const balls = [...new Set(bounces.map(b => b.ball))];
+            const filtersDiv = document.getElementById('ballFilters');
+            filtersDiv.innerHTML = '<button class="filter-btn active" data-ball="all" onclick="setFilter(\'all\')">All</button>';
+            balls.forEach(ball => {
+                const color = ballColors[ball] || '#888';
+                filtersDiv.innerHTML += `<button class="filter-btn" data-ball="${ball}" onclick="setFilter('${ball}')" style="border-left: 3px solid ${color};">${ball}</button>`;
+            });
+
+            // Populate bounce list
+            updateBounceList();
+        }
+
+        function isSuspicious(bounce) {
+            // Wall hit with very small angle change (< 15 degrees) is suspicious (sliding)
+            if (bounce.hitType === 'wall' && Math.abs(bounce.angleChange) < 15) {
+                return true;
+            }
+            // Also check if velocity barely changed direction
+            if (bounce.preVelocity && bounce.postVelocity) {
+                const preAngle = Math.atan2(bounce.preVelocity.y, bounce.preVelocity.x);
+                const postAngle = Math.atan2(bounce.postVelocity.y, bounce.postVelocity.x);
+                let angleDiff = Math.abs(postAngle - preAngle) * (180 / Math.PI);
+                if (angleDiff > 180) angleDiff = 360 - angleDiff;
+
+                // If angle change is very small (< 10 degrees) and it's a wall hit
+                if (bounce.hitType === 'wall' && angleDiff < 10) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function showAnalysis(bounces, suspicious) {
+            const resultDiv = document.getElementById('analysisResult');
+            resultDiv.style.display = 'block';
+
+            const suspiciousPercent = (suspicious.length / bounces.length * 100).toFixed(1);
+
+            let analysisClass = 'good';
+            let analysisText = '';
+
+            if (suspicious.length === 0) {
+                analysisText = `All ${bounces.length} bounces appear to be legitimate bounces with proper angle changes.`;
+            } else if (suspiciousPercent < 10) {
+                analysisClass = 'warning';
+                analysisText = `${suspicious.length} bounces (${suspiciousPercent}%) show minimal angle change on wall hits, which may indicate sliding behavior. Click on red-highlighted bounces to investigate.`;
+            } else {
+                analysisClass = 'bad';
+                analysisText = `${suspicious.length} bounces (${suspiciousPercent}%) appear suspicious. Balls may be sliding along walls instead of bouncing properly. Review the highlighted bounces for patterns.`;
+            }
+
+            // Add pattern detection
+            const wallSlidingPatterns = detectSlidingPatterns(bounces);
+            if (wallSlidingPatterns.length > 0) {
+                analysisText += `\n\nDetected sliding patterns: ${wallSlidingPatterns.join(', ')}`;
+            }
+
+            resultDiv.className = `analysis-result ${analysisClass}`;
+            resultDiv.innerHTML = analysisText.replace(/\n/g, '<br>');
+        }
+
+        function detectSlidingPatterns(bounces) {
+            const patterns = [];
+
+            // Group bounces by ball
+            const byBall = {};
+            bounces.forEach(b => {
+                if (!byBall[b.ball]) byBall[b.ball] = [];
+                byBall[b.ball].push(b);
+            });
+
+            // Check for consecutive wall hits with same wall
+            for (const [ball, ballBounces] of Object.entries(byBall)) {
+                let consecutiveWall = 0;
+                let lastWall = null;
+
+                for (const bounce of ballBounces) {
+                    if (bounce.hitType === 'wall') {
+                        const wall = getWallName(bounce.position);
+                        if (wall === lastWall) {
+                            consecutiveWall++;
+                            if (consecutiveWall >= 3) {
+                                patterns.push(`${ball} sliding on ${wall}`);
+                                break;
+                            }
+                        } else {
+                            consecutiveWall = 1;
+                            lastWall = wall;
+                        }
+                    } else {
+                        consecutiveWall = 0;
+                        lastWall = null;
+                    }
+                }
+            }
+
+            return [...new Set(patterns)];
+        }
+
+        function getWallName(pos) {
+            const mapWidth = parseInt(document.getElementById('mapWidth').value) || 800;
+            const mapHeight = parseInt(document.getElementById('mapHeight').value) || 600;
+            const margin = 30;
+
+            if (pos.x < margin) return 'left wall';
+            if (pos.x > mapWidth - margin) return 'right wall';
+            if (pos.y < margin) return 'top wall';
+            if (pos.y > mapHeight - margin) return 'bottom wall';
+            return 'unknown wall';
+        }
+
+        function setFilter(ball) {
+            activeFilter = ball;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.ball === ball);
+            });
+            updateBounceList();
+            redraw();
+        }
+
+        function updateBounceList() {
+            if (!bounceData || !bounceData.bounces) return;
+
+            const listDiv = document.getElementById('bounceList');
+            let bounces = bounceData.bounces;
+
+            if (activeFilter !== 'all') {
+                bounces = bounces.filter(b => b.ball === activeFilter);
+            }
+
+            if (bounces.length === 0) {
+                listDiv.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No bounces match filter</p>';
+                return;
+            }
+
+            listDiv.innerHTML = bounces.map((b, i) => {
+                const suspicious = isSuspicious(b);
+                const color = ballColors[b.ball] || '#888';
+                const originalIndex = bounceData.bounces.indexOf(b);
+
+                return `
+                    <div class="bounce-item ${suspicious ? 'suspicious' : ''}"
+                         onclick="selectBounce(${originalIndex})"
+                         data-index="${originalIndex}">
+                        <span class="ball-name" style="color: ${color};">${b.ball}</span>
+                        <span style="float: right; color: #888;">#${originalIndex + 1}</span>
+                        <div class="details">
+                            ${b.hitType} hit @ (${Math.round(b.position.x)}, ${Math.round(b.position.y)})
+                            | Angle: ${b.angleChange.toFixed(1)}°
+                            ${suspicious ? '<span style="color: #e74c3c;"> [SUSPICIOUS]</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectBounce(index) {
+            selectedBounce = bounceData.bounces[index];
+
+            // Update list selection
+            document.querySelectorAll('.bounce-item').forEach(item => {
+                item.classList.toggle('selected', parseInt(item.dataset.index) === index);
+            });
+
+            // Show selected bounce panel
+            const panel = document.getElementById('selectedBouncePanel');
+            panel.style.display = 'block';
+
+            const bounce = selectedBounce;
+            const suspicious = isSuspicious(bounce);
+
+            document.getElementById('selectedBounceInfo').innerHTML = `
+                <div class="info-row">
+                    <span class="info-label">Ball:</span>
+                    <span class="info-value" style="color: ${ballColors[bounce.ball] || '#888'};">${bounce.ball}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Hit Type:</span>
+                    <span class="info-value">${bounce.hitType}${bounce.corner ? ' (corner)' : ''}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Position:</span>
+                    <span class="info-value">(${bounce.position.x.toFixed(1)}, ${bounce.position.y.toFixed(1)})</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Pre-velocity:</span>
+                    <span class="info-value">(${bounce.preVelocity.x.toFixed(2)}, ${bounce.preVelocity.y.toFixed(2)})</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Post-velocity:</span>
+                    <span class="info-value">(${bounce.postVelocity.x.toFixed(2)}, ${bounce.postVelocity.y.toFixed(2)})</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Angle Change:</span>
+                    <span class="info-value" style="color: ${suspicious ? '#e74c3c' : '#2ecc71'};">${bounce.angleChange.toFixed(1)}°</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status:</span>
+                    <span class="info-value" style="color: ${suspicious ? '#e74c3c' : '#2ecc71'};">${suspicious ? 'SUSPICIOUS (sliding?)' : 'Normal bounce'}</span>
+                </div>
+                ${bounce.nearWall ? `
+                <div class="info-row">
+                    <span class="info-label">Near Wall:</span>
+                    <span class="info-value">${bounce.nearWall}</span>
+                </div>
+                ` : ''}
+            `;
+
+            drawVelocityDiagram(bounce);
+            redraw();
+        }
+
+        function drawVelocityDiagram(bounce) {
+            const w = velocityCanvas.width;
+            const h = velocityCanvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+
+            velocityCtx.fillStyle = '#1a1a2e';
+            velocityCtx.fillRect(0, 0, w, h);
+
+            // Draw axes
+            velocityCtx.strokeStyle = '#444';
+            velocityCtx.lineWidth = 1;
+            velocityCtx.beginPath();
+            velocityCtx.moveTo(0, cy);
+            velocityCtx.lineTo(w, cy);
+            velocityCtx.moveTo(cx, 0);
+            velocityCtx.lineTo(cx, h);
+            velocityCtx.stroke();
+
+            // Scale velocities to fit
+            const maxV = Math.max(
+                Math.abs(bounce.preVelocity.x),
+                Math.abs(bounce.preVelocity.y),
+                Math.abs(bounce.postVelocity.x),
+                Math.abs(bounce.postVelocity.y)
+            );
+            const scale = 50 / maxV;
+
+            // Draw pre-velocity (blue arrow)
+            drawArrow(velocityCtx, cx, cy,
+                cx + bounce.preVelocity.x * scale,
+                cy + bounce.preVelocity.y * scale,
+                '#3498db', 'Pre');
+
+            // Draw post-velocity (green arrow)
+            drawArrow(velocityCtx, cx, cy,
+                cx + bounce.postVelocity.x * scale,
+                cy + bounce.postVelocity.y * scale,
+                '#2ecc71', 'Post');
+
+            // Draw angle arc
+            const preAngle = Math.atan2(bounce.preVelocity.y, bounce.preVelocity.x);
+            const postAngle = Math.atan2(bounce.postVelocity.y, bounce.postVelocity.x);
+
+            velocityCtx.strokeStyle = '#f39c12';
+            velocityCtx.lineWidth = 2;
+            velocityCtx.beginPath();
+            velocityCtx.arc(cx, cy, 25, preAngle, postAngle, preAngle > postAngle);
+            velocityCtx.stroke();
+
+            // Label
+            velocityCtx.fillStyle = '#888';
+            velocityCtx.font = '10px sans-serif';
+            velocityCtx.fillText(`${bounce.angleChange.toFixed(1)}°`, cx + 30, cy - 30);
+        }
+
+        function drawArrow(ctx, x1, y1, x2, y2, color, label) {
+            const headLen = 8;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 2;
+
+            // Line
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            // Arrowhead
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function redraw() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Clear
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, w, h);
+
+            // Draw grid
+            if (document.getElementById('showGrid').checked) {
+                drawGrid();
+            }
+
+            // Draw obstacles
+            if (document.getElementById('showObstacles').checked && mapData) {
+                drawObstacles();
+            }
+
+            // Draw walls
+            drawWalls();
+
+            // Draw bounces
+            if (bounceData && bounceData.bounces) {
+                let bounces = bounceData.bounces;
+                if (activeFilter !== 'all') {
+                    bounces = bounces.filter(b => b.ball === activeFilter);
+                }
+
+                // Draw trajectories if enabled
+                if (document.getElementById('showTrajectory').checked) {
+                    drawTrajectories(bounces);
+                }
+
+                // Draw bounce points and arrows
+                if (document.getElementById('showBouncePoints').checked) {
+                    bounces.forEach((bounce, i) => {
+                        drawBounce(bounce, bounce === selectedBounce);
+                    });
+                }
+            }
+
+            // Draw coordinate labels
+            drawCoordinateLabels();
+        }
+
+        function drawGrid() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const gridSize = 50;
+
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+
+            // Vertical lines
+            for (let x = 0; x <= w; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+
+            // Horizontal lines
+            for (let y = 0; y <= h; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawWalls() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(2, 2, w - 4, h - 4);
+
+            // Wall labels
+            ctx.fillStyle = '#666';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('TOP', w / 2, 15);
+            ctx.fillText('BOTTOM', w / 2, h - 5);
+
+            ctx.save();
+            ctx.translate(10, h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('LEFT', 0, 0);
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(w - 5, h / 2);
+            ctx.rotate(Math.PI / 2);
+            ctx.fillText('RIGHT', 0, 0);
+            ctx.restore();
+        }
+
+        function drawObstacles() {
+            if (!mapData) return;
+
+            const obstacles = mapData.data?.obstacles || mapData.obstacles || [];
+
+            obstacles.forEach(obs => {
+                ctx.save();
+
+                if (obs.angle) {
+                    ctx.translate(obs.x, obs.y);
+                    ctx.rotate(obs.angle * Math.PI / 180);
+                    ctx.translate(-obs.x, -obs.y);
+                }
+
+                ctx.fillStyle = obs.color || '#666';
+                ctx.globalAlpha = 0.5;
+
+                if (obs.shape === 'circle' || obs.type === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(obs.x, obs.y, obs.radius || obs.width / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(
+                        obs.x - (obs.width || 50) / 2,
+                        obs.y - (obs.height || 20) / 2,
+                        obs.width || 50,
+                        obs.height || 20
+                    );
+                }
+
+                ctx.globalAlpha = 1;
+                ctx.restore();
+            });
+
+            // Draw start zone
+            const startZone = mapData.data?.startZone || mapData.startZone;
+            if (startZone) {
+                ctx.strokeStyle = '#2ecc71';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(startZone.x, startZone.y, startZone.width, startZone.height);
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#2ecc71';
+                ctx.font = '12px sans-serif';
+                ctx.fillText('START', startZone.x + 5, startZone.y + 15);
+            }
+
+            // Draw finish zone
+            const finishZone = mapData.data?.finishZone || mapData.finishZone;
+            if (finishZone) {
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(finishZone.x, finishZone.y, finishZone.width, finishZone.height);
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = '12px sans-serif';
+                ctx.fillText('FINISH', finishZone.x + 5, finishZone.y + 15);
+            }
+        }
+
+        function drawTrajectories(bounces) {
+            // Group by ball
+            const byBall = {};
+            bounces.forEach(b => {
+                if (!byBall[b.ball]) byBall[b.ball] = [];
+                byBall[b.ball].push(b);
+            });
+
+            // Draw lines between consecutive bounces for each ball
+            for (const [ball, ballBounces] of Object.entries(byBall)) {
+                if (ballBounces.length < 2) continue;
+
+                ctx.strokeStyle = ballColors[ball] || '#888';
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.3;
+
+                ctx.beginPath();
+                ctx.moveTo(ballBounces[0].position.x, ballBounces[0].position.y);
+
+                for (let i = 1; i < ballBounces.length; i++) {
+                    ctx.lineTo(ballBounces[i].position.x, ballBounces[i].position.y);
+                }
+
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function drawBounce(bounce, isSelected) {
+            const x = bounce.position.x;
+            const y = bounce.position.y;
+            const suspicious = isSuspicious(bounce);
+            const ballColor = ballColors[bounce.ball] || '#888';
+
+            // Draw point
+            ctx.beginPath();
+            ctx.arc(x, y, isSelected ? 8 : 5, 0, Math.PI * 2);
+
+            if (suspicious && document.getElementById('highlightSuspicious').checked) {
+                ctx.fillStyle = '#e74c3c';
+            } else if (bounce.hitType === 'wall') {
+                ctx.fillStyle = '#9b59b6';
+            } else {
+                ctx.fillStyle = '#f39c12';
+            }
+
+            ctx.fill();
+
+            // Selection ring
+            if (isSelected) {
+                ctx.strokeStyle = '#00d4ff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(x, y, 12, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Draw velocity arrows
+            if (document.getElementById('showVelocityArrows').checked) {
+                const arrowScale = 15;
+
+                // Pre-velocity (blue)
+                const preLen = Math.sqrt(bounce.preVelocity.x ** 2 + bounce.preVelocity.y ** 2);
+                if (preLen > 0) {
+                    const preX = bounce.preVelocity.x / preLen * arrowScale;
+                    const preY = bounce.preVelocity.y / preLen * arrowScale;
+                    drawArrowOnCanvas(x - preX, y - preY, x, y, '#3498db');
+                }
+
+                // Post-velocity (green)
+                const postLen = Math.sqrt(bounce.postVelocity.x ** 2 + bounce.postVelocity.y ** 2);
+                if (postLen > 0) {
+                    const postX = bounce.postVelocity.x / postLen * arrowScale;
+                    const postY = bounce.postVelocity.y / postLen * arrowScale;
+                    drawArrowOnCanvas(x, y, x + postX, y + postY, '#2ecc71');
+                }
+            }
+        }
+
+        function drawArrowOnCanvas(x1, y1, x2, y2, color) {
+            const headLen = 6;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawCoordinateLabels() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.fillStyle = '#666';
+            ctx.font = '10px monospace';
+
+            // X axis labels
+            for (let x = 0; x <= w; x += 100) {
+                ctx.fillText(x.toString(), x + 2, h - 20);
+            }
+
+            // Y axis labels
+            for (let y = 0; y <= h; y += 100) {
+                ctx.fillText(y.toString(), 25, y + 12);
+            }
+
+            // Origin label
+            ctx.fillStyle = '#888';
+            ctx.fillText('(0,0)', 5, 12);
+            ctx.fillText(`(${w},${h})`, w - 50, h - 5);
+        }
+
+        // Initial draw
+        redraw();
+    </script>
+</body>
+</html>

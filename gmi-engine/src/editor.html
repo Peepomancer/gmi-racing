@@ -1,0 +1,2573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GMI Racing - Map Editor</title>
+  <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #2a2a2a;
+      --accent-cyan: #00ffff;
+      --accent-magenta: #ff00ff;
+      --accent-green: #00ff88;
+      --accent-red: #ff4444;
+      --accent-yellow: #ffff44;
+      --text-primary: #ffffff;
+      --text-secondary: #aaaaaa;
+      --text-muted: #666666;
+      --border: #333333;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .editor-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Top Toolbar */
+    .top-toolbar {
+      height: 50px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 15px;
+      gap: 10px;
+    }
+
+    .toolbar-logo {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-right: 20px;
+    }
+
+    .toolbar-btn {
+      padding: 8px 14px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+
+    .toolbar-btn:hover {
+      background: var(--accent-cyan);
+      color: var(--bg-primary);
+      border-color: var(--accent-cyan);
+    }
+
+    .toolbar-btn.primary {
+      background: var(--accent-cyan);
+      color: var(--bg-primary);
+      border-color: var(--accent-cyan);
+    }
+
+    .toolbar-btn.primary:hover {
+      background: var(--accent-magenta);
+      border-color: var(--accent-magenta);
+    }
+
+    .toolbar-btn.danger {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .toolbar-btn.danger:hover {
+      background: var(--accent-red);
+      color: var(--bg-primary);
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 30px;
+      background: var(--border);
+      margin: 0 5px;
+    }
+
+    .toolbar-spacer {
+      flex: 1;
+    }
+
+    /* Main Content Area */
+    .main-content {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Left Sidebar - Map List */
+    .sidebar-left {
+      width: 220px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      padding: 15px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar-header h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .btn-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .btn-icon:hover {
+      color: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+    }
+
+    .map-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .map-item {
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .map-item:hover {
+      border-color: var(--accent-cyan);
+    }
+
+    .map-item.active {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 255, 255, 0.1);
+    }
+
+    .map-item-name {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .map-item-info {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .map-item-actions {
+      display: flex;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .map-item-actions button {
+      flex: 1;
+      padding: 4px 8px;
+      font-size: 10px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .map-item-actions button:hover {
+      color: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+    }
+
+    .empty-state {
+      padding: 30px 20px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    /* Sidebar Tabs */
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-tab {
+      flex: 1;
+      padding: 10px;
+      background: var(--bg-tertiary);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .sidebar-tab:hover {
+      color: var(--accent-cyan);
+    }
+
+    .sidebar-tab.active {
+      background: var(--bg-secondary);
+      color: var(--accent-cyan);
+      border-bottom: 2px solid var(--accent-cyan);
+    }
+
+    .sidebar-tab-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Chain List */
+    .chain-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      max-height: 200px;
+    }
+
+    .chain-item {
+      padding: 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chain-item:hover {
+      border-color: var(--accent-magenta);
+    }
+
+    .chain-item.active {
+      border-color: var(--accent-magenta);
+      background: rgba(255, 0, 255, 0.1);
+    }
+
+    .chain-item-name {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .chain-item-info {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Chain Editor */
+    .chain-editor-header {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chain-name-input {
+      flex: 1;
+      padding: 6px 10px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .chain-name-input:focus {
+      outline: none;
+      border-color: var(--accent-magenta);
+    }
+
+    .chain-slots {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      min-height: 150px;
+      max-height: 300px;
+    }
+
+    .chain-slot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 6px;
+      cursor: grab;
+      transition: all 0.15s;
+    }
+
+    .chain-slot:hover {
+      border-color: var(--accent-cyan);
+    }
+
+    .chain-slot.dragging {
+      opacity: 0.5;
+      border-color: var(--accent-magenta);
+    }
+
+    .chain-slot.drag-over {
+      border-color: var(--accent-green);
+      background: rgba(0, 255, 136, 0.1);
+    }
+
+    .chain-slot-number {
+      width: 20px;
+      height: 20px;
+      background: var(--accent-magenta);
+      color: var(--bg-primary);
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chain-slot-name {
+      flex: 1;
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chain-slot-boss {
+      font-size: 10px;
+      color: var(--accent-red);
+      padding: 2px 5px;
+      background: rgba(255, 68, 68, 0.2);
+      border-radius: 3px;
+    }
+
+    .chain-slot-remove {
+      width: 18px;
+      height: 18px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chain-slot-remove:hover {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .chain-slot-empty {
+      padding: 20px;
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .chain-slot-empty.drag-over {
+      border-color: var(--accent-green);
+      background: rgba(0, 255, 136, 0.1);
+      color: var(--accent-green);
+    }
+
+    .chain-hint {
+      padding: 10px;
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .chain-actions {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .chain-actions button {
+      flex: 1;
+    }
+
+    /* Map item drag styles */
+    .map-item.dragging {
+      opacity: 0.5;
+    }
+
+    .map-item[draggable="true"] {
+      cursor: grab;
+    }
+
+    .map-item[draggable="true"]:active {
+      cursor: grabbing;
+    }
+
+    /* Left Tool Sidebar (Photoshop style) */
+    .tool-sidebar {
+      width: 50px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 5px;
+      gap: 5px;
+    }
+
+    .tool-sidebar .tool-btn {
+      width: 40px;
+      height: 40px;
+      background: var(--bg-tertiary);
+      border: 2px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .tool-sidebar .tool-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .tool-sidebar .tool-btn.active {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-primary);
+    }
+
+    .tool-sidebar .tool-shortcut {
+      position: absolute;
+      bottom: 2px;
+      right: 3px;
+      font-size: 8px;
+      font-weight: 700;
+      opacity: 0.7;
+    }
+
+    .tool-divider {
+      width: 30px;
+      height: 1px;
+      background: var(--border);
+      margin: 5px 0;
+    }
+
+    /* Chain Edit Mode Bar */
+    .chain-edit-bar {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+      padding: 8px 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: white;
+      font-size: 12px;
+    }
+
+    .chain-edit-bar.hidden {
+      display: none;
+    }
+
+    .chain-edit-label {
+      font-weight: bold;
+      opacity: 0.8;
+    }
+
+    .chain-edit-name {
+      font-weight: bold;
+    }
+
+    .chain-edit-progress {
+      opacity: 0.7;
+      flex: 1;
+    }
+
+    .chain-edit-bar .toolbar-btn.small {
+      padding: 4px 10px;
+      font-size: 11px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .chain-edit-bar .toolbar-btn.small:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Chain Map List in Sidebar */
+    .chain-map-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .chain-map-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: var(--bg-primary);
+      border: 2px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chain-map-item:hover {
+      border-color: var(--accent-cyan);
+    }
+
+    .chain-map-item.active {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 255, 255, 0.1);
+    }
+
+    .chain-map-item .map-number {
+      width: 24px;
+      height: 24px;
+      background: var(--accent-purple);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .chain-map-item.active .map-number {
+      background: var(--accent-cyan);
+    }
+
+    .chain-map-item .map-name {
+      flex: 1;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chain-map-item .map-badge {
+      font-size: 9px;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: var(--accent-red);
+      color: white;
+    }
+
+    .chain-map-item .btn-remove {
+      width: 20px;
+      height: 20px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .chain-map-item:hover .btn-remove {
+      opacity: 1;
+    }
+
+    .chain-map-item .btn-remove:hover {
+      color: var(--accent-red);
+    }
+
+    /* Floating Library Window */
+    .library-window {
+      position: fixed;
+      top: 80px;
+      left: 70px;
+      width: 700px;
+      height: 450px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      resize: both;
+      overflow: hidden;
+      min-width: 500px;
+      min-height: 300px;
+      min-width: 300px;
+      min-height: 300px;
+    }
+
+    .library-window.hidden {
+      display: none;
+    }
+
+    .library-window-header {
+      display: flex;
+      align-items: center;
+      padding: 10px 15px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+      cursor: move;
+    }
+
+    .library-window-header h3 {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .library-window-close {
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+
+    .library-window-close:hover {
+      background: var(--accent-red);
+      color: white;
+    }
+
+    .library-window-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .library-window-tab {
+      flex: 1;
+      padding: 10px;
+      background: var(--bg-tertiary);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .library-window-tab:hover {
+      color: var(--accent-cyan);
+    }
+
+    .library-window-tab.active {
+      background: var(--bg-secondary);
+      color: var(--accent-cyan);
+      border-bottom: 2px solid var(--accent-cyan);
+    }
+
+    .library-window-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .library-section {
+      margin-bottom: 15px;
+    }
+
+    .library-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .library-section-header h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    /* Boss preview indicator on canvas */
+    .boss-preview-indicator {
+      position: absolute;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* Canvas Area */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-primary);
+    }
+
+    .canvas-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      padding: 20px;
+    }
+
+    #editor-container {
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Tool Bar (Bottom) */
+    .tool-bar {
+      height: 60px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 20px;
+    }
+
+    .tool-btn {
+      width: 44px;
+      height: 44px;
+      background: var(--bg-tertiary);
+      border: 2px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .tool-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .tool-btn.active {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-primary);
+    }
+
+    .tool-btn .shortcut {
+      position: absolute;
+      bottom: 2px;
+      right: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      opacity: 0.7;
+    }
+
+    .tool-btn[title]:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 5px 10px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      margin-bottom: 5px;
+      z-index: 100;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      height: 28px;
+      background: var(--bg-tertiary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 15px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      gap: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-item.tip {
+      color: var(--text-muted);
+    }
+
+    /* Right Sidebar - Properties */
+    .sidebar-right {
+      width: 280px;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .panel {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-header {
+      padding: 12px 15px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: var(--bg-tertiary);
+    }
+
+    .panel-content {
+      padding: 15px;
+    }
+
+    .panel-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .control-group {
+      margin-bottom: 12px;
+    }
+
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Keyframe toggle button next to properties */
+    .kf-btn {
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      margin-left: 5px;
+    }
+
+    .kf-btn:hover {
+      border-color: var(--accent-yellow);
+      color: var(--accent-yellow);
+      background: rgba(255, 255, 68, 0.1);
+    }
+
+    .kf-btn.has-keyframe {
+      background: var(--accent-yellow);
+      border-color: var(--accent-yellow);
+      color: var(--bg-primary);
+    }
+
+    .kf-btn.has-keyframe:hover {
+      background: var(--accent-magenta);
+      border-color: var(--accent-magenta);
+    }
+
+    .control-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .control-row .control-group {
+      flex: 1;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 7px 10px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 32px;
+      padding: 2px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    select {
+      width: 100%;
+      padding: 7px 10px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    /* Radio buttons */
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .radio-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .radio-item input[type="radio"] {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .radio-item input[type="radio"]:checked {
+      border-color: var(--accent-cyan);
+      background: var(--accent-cyan);
+      box-shadow: inset 0 0 0 3px var(--bg-primary);
+    }
+
+    .radio-item label {
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    /* Checkbox */
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .checkbox-item input[type="checkbox"]:checked {
+      border-color: var(--accent-cyan);
+      background: var(--accent-cyan);
+    }
+
+    .checkbox-item label {
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    /* Behavior settings sections */
+    .behavior-settings {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .behavior-settings.hidden {
+      display: none;
+    }
+
+    .behavior-title {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    /* No selection state */
+    .no-selection {
+      padding: 30px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-width: 400px;
+      max-width: 500px;
+    }
+
+    .modal-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .modal-footer {
+      padding: 15px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .size-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .size-preset {
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .size-preset:hover,
+    .size-preset.active {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* Validation warning */
+    .validation-warning {
+      padding: 10px 15px;
+      background: rgba(255, 68, 68, 0.1);
+      border: 1px solid var(--accent-red);
+      border-radius: 4px;
+      color: var(--accent-red);
+      font-size: 12px;
+      margin-bottom: 15px;
+    }
+
+    .validation-warning.hidden {
+      display: none;
+    }
+
+    /* Welcome modal */
+    .welcome-content {
+      line-height: 1.6;
+    }
+
+    .welcome-content ol {
+      padding-left: 20px;
+      margin: 15px 0;
+    }
+
+    .welcome-content li {
+      margin-bottom: 8px;
+    }
+
+    /* ============= ANIMATION TIMELINE STYLES ============= */
+    .timeline-panel {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 200px;
+      min-height: 120px;
+      max-height: 350px;
+      transition: height 0.2s;
+    }
+
+    .timeline-panel.collapsed {
+      height: 32px;
+      min-height: 32px;
+    }
+
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .timeline-header h3 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .timeline-toggle {
+      width: 20px;
+      height: 20px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timeline-toggle:hover {
+      color: var(--accent-cyan);
+    }
+
+    .timeline-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 10px;
+    }
+
+    .timeline-btn {
+      width: 28px;
+      height: 28px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .timeline-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .timeline-btn.playing {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      color: var(--bg-primary);
+    }
+
+    .timeline-time {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--accent-cyan);
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .timeline-settings {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+    }
+
+    .timeline-settings label {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .timeline-settings select,
+    .timeline-settings input {
+      padding: 4px 8px;
+      font-size: 11px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 3px;
+    }
+
+    .timeline-settings input[type="number"] {
+      width: 60px;
+    }
+
+    .timeline-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .timeline-panel.collapsed .timeline-body {
+      display: none;
+    }
+
+    /* Track labels */
+    .timeline-labels {
+      width: 100px;
+      background: var(--bg-tertiary);
+      border-right: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .timeline-label-header {
+      height: 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding-left: 10px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .timeline-label {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .timeline-label:hover {
+      background: var(--bg-primary);
+    }
+
+    .timeline-label.active {
+      color: var(--accent-cyan);
+    }
+
+    .timeline-label .add-keyframe {
+      margin-left: auto;
+      width: 16px;
+      height: 16px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 10px;
+      opacity: 0;
+    }
+
+    .timeline-label:hover .add-keyframe {
+      opacity: 1;
+    }
+
+    .timeline-label .add-keyframe:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* Tracks area */
+    .timeline-tracks {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+    }
+
+    .timeline-ruler {
+      height: 28px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .timeline-ruler-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .timeline-track-container {
+      position: relative;
+      min-height: 100%;
+    }
+
+    .timeline-track {
+      height: 28px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .timeline-track:hover {
+      background: rgba(0, 255, 255, 0.03);
+    }
+
+    /* Playhead */
+    .timeline-playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--accent-cyan);
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .timeline-playhead::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -5px;
+      width: 11px;
+      height: 11px;
+      background: var(--accent-cyan);
+      clip-path: polygon(50% 100%, 0 0, 100% 0);
+    }
+
+    /* Keyframes */
+    .timeline-keyframe {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: var(--accent-yellow);
+      transform: translateX(-5px) translateY(9px) rotate(45deg);
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    .timeline-keyframe:hover {
+      background: var(--accent-magenta);
+      transform: translateX(-5px) translateY(9px) rotate(45deg) scale(1.2);
+    }
+
+    .timeline-keyframe.selected {
+      background: var(--accent-magenta);
+      box-shadow: 0 0 6px var(--accent-magenta);
+    }
+
+    /* Preset panel */
+    .preset-panel {
+      padding: 10px;
+      background: var(--bg-tertiary);
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+
+    .preset-panel.visible {
+      display: block;
+    }
+
+    .preset-category {
+      margin-bottom: 10px;
+    }
+
+    .preset-category-title {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .preset-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .preset-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* No animation message */
+    .timeline-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .timeline-empty p {
+      margin: 5px 0;
+    }
+
+    /* ============= Timeline Component Internal Styles ============= */
+    .timeline-component {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      font-size: 12px;
+    }
+
+    .timeline-component .timeline-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline-component .tl-btn {
+      width: 28px;
+      height: 28px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timeline-component .tl-btn:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .timeline-component .tl-time-display {
+      font-family: 'Courier New', monospace;
+      color: var(--accent-cyan);
+      min-width: 70px;
+    }
+
+    .timeline-component .tl-separator {
+      color: var(--text-muted);
+    }
+
+    .timeline-component label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-secondary);
+    }
+
+    .timeline-component input,
+    .timeline-component select {
+      padding: 3px 6px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 3px;
+      font-size: 11px;
+    }
+
+    .timeline-component .tl-duration {
+      width: 60px;
+    }
+
+    .timeline-component .timeline-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .timeline-component .timeline-labels {
+      width: 80px;
+      background: var(--bg-tertiary);
+      border-right: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .timeline-component .tl-label {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 10px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline-component .tl-label.tl-header {
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+    }
+
+    .timeline-component .timeline-tracks-container {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: visible;
+      position: relative;
+    }
+
+    .timeline-component .ruler-ticks {
+      position: relative;
+      height: 100%;
+    }
+
+    .timeline-component .ruler-tick {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .timeline-component .ruler-tick.major {
+      background: var(--text-muted);
+    }
+
+    .timeline-component .tick-label {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+
+    .timeline-component .playhead {
+      position: absolute;
+      top: 0;
+      width: 1px;
+      height: 200px; /* Extends beyond ruler into tracks */
+      z-index: 20;
+      cursor: ew-resize;
+      pointer-events: none;
+    }
+
+    .timeline-component .playhead-head {
+      width: 11px;
+      height: 11px;
+      background: var(--accent-cyan);
+      position: absolute;
+      top: 0;
+      left: -5px;
+      clip-path: polygon(50% 100%, 0 0, 100% 0);
+      pointer-events: auto;
+      cursor: ew-resize;
+    }
+
+    .timeline-component .playhead-line {
+      position: absolute;
+      top: 11px;
+      left: 0;
+      width: 1px;
+      height: 180px;
+      background: var(--accent-cyan);
+    }
+
+    .timeline-component .timeline-ruler {
+      height: 24px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: visible;
+    }
+
+    .timeline-component .timeline-tracks {
+      position: relative;
+    }
+
+    .timeline-component .tl-track {
+      height: 24px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline-component .tl-track:hover {
+      background: rgba(0, 255, 255, 0.03);
+    }
+
+    .timeline-component .track-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    .timeline-component .track-keyframes {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    .timeline-component .keyframe {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: var(--accent-yellow);
+      transform: translateX(-4px) translateY(8px) rotate(45deg);
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    .timeline-component .keyframe:hover {
+      background: var(--accent-magenta);
+      transform: translateX(-4px) translateY(8px) rotate(45deg) scale(1.2);
+    }
+
+    .timeline-component .keyframe.selected {
+      background: var(--accent-magenta);
+      box-shadow: 0 0 6px var(--accent-magenta);
+    }
+
+    .timeline-component .timeline-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 10px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+    }
+
+    .timeline-component .tl-hint {
+      color: var(--text-muted);
+    }
+
+    .timeline-component .tl-easing-selector {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* ============= Multi-Layer Timeline Styles ============= */
+    .timeline-component .tl-layer-count {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      padding: 2px 8px;
+      background: var(--bg-primary);
+      border-radius: 3px;
+    }
+
+    .timeline-component .timeline-layers-panel {
+      width: 150px;
+      background: var(--bg-tertiary);
+      border-right: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .timeline-component .tl-layers-header {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline-component .tl-layers-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .timeline-component .tl-layer {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline-component .tl-layer.selected {
+      background: rgba(0, 255, 255, 0.08);
+    }
+
+    .timeline-component .tl-layer-header {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      gap: 6px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .timeline-component .tl-layer-header:hover {
+      background: var(--bg-primary);
+    }
+
+    .timeline-component .tl-layer-toggle {
+      font-size: 8px;
+      color: var(--text-muted);
+      width: 12px;
+      text-align: center;
+    }
+
+    .timeline-component .tl-layer-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .timeline-component .tl-layer-name {
+      font-size: 10px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timeline-component .tl-layer.selected .tl-layer-name {
+      color: var(--accent-cyan);
+    }
+
+    .timeline-component .tl-prop-label {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px 0 24px;
+      font-size: 10px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline-component .tl-no-layers,
+    .timeline-component .tl-no-tracks {
+      padding: 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .timeline-component .tl-layer-tracks {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .timeline-component .tl-layer-tracks.selected {
+      background: rgba(0, 255, 255, 0.03);
+    }
+
+    .timeline-component .tl-layer-track-header {
+      height: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="editor-container">
+    <!-- Top Toolbar -->
+    <div class="top-toolbar">
+      <span class="toolbar-logo">GMI Map Editor</span>
+      <button class="toolbar-btn" id="btn-back-to-game">Back to Game</button>
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn" id="btn-new-map">New Map</button>
+      <button class="toolbar-btn primary" id="btn-save">Save</button>
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn" id="btn-import">Import JSON</button>
+      <button class="toolbar-btn" id="btn-export">Export JSON</button>
+      <input type="file" id="import-file-input" accept=".json" style="display: none;">
+      <div class="toolbar-spacer"></div>
+      <button class="toolbar-btn" id="btn-library">Map Library</button>
+      <button class="toolbar-btn" id="btn-test-map">Test Map</button>
+      <button class="toolbar-btn" id="btn-test-chain" disabled title="Enter chain edit mode to test chains">Test Chain</button>
+    </div>
+
+    <!-- Chain Edit Mode Indicator -->
+    <div class="chain-edit-bar hidden" id="chain-edit-bar">
+      <span class="chain-edit-label">Editing Chain:</span>
+      <span class="chain-edit-name" id="chain-edit-name">Untitled Chain</span>
+      <span class="chain-edit-progress" id="chain-edit-progress">(Map 1 of 3)</span>
+      <button class="toolbar-btn small" id="btn-exit-chain-mode">Exit Chain Mode</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Left Toolbar (Photoshop style) -->
+      <div class="tool-sidebar">
+        <button class="tool-btn active" data-tool="select" title="Select Tool (V)">
+          <span>&#9995;</span>
+          <span class="tool-shortcut">V</span>
+        </button>
+        <button class="tool-btn" data-tool="rectangle" title="Rectangle (R)">
+          <span>&#9645;</span>
+          <span class="tool-shortcut">R</span>
+        </button>
+        <button class="tool-btn" data-tool="circle" title="Circle (C)">
+          <span>&#9711;</span>
+          <span class="tool-shortcut">C</span>
+        </button>
+        <div class="tool-divider"></div>
+        <button class="tool-btn" data-tool="start" title="Start Zone (S)" style="color: var(--accent-green);">
+          <span>S</span>
+          <span class="tool-shortcut">S</span>
+        </button>
+        <button class="tool-btn" data-tool="finish" title="Finish Zone (F)" style="color: var(--accent-red);">
+          <span>F</span>
+          <span class="tool-shortcut">F</span>
+        </button>
+        <div class="tool-divider"></div>
+        <button class="tool-btn" data-tool="boss" title="Boss Position (B)" style="color: var(--accent-yellow);">
+          <span>&#9760;</span>
+          <span class="tool-shortcut">B</span>
+        </button>
+        <button class="tool-btn" data-tool="item" title="Item Spawn (I)" style="color: var(--accent-cyan);">
+          <span>&#127873;</span>
+          <span class="tool-shortcut">I</span>
+        </button>
+      </div>
+
+      <!-- Canvas Area -->
+      <div class="canvas-area">
+        <div class="canvas-wrapper">
+          <div id="editor-container"></div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+          <span class="status-item" id="status-tool">Tool: Select</span>
+          <span class="status-item" id="status-size">Size: 800 x 600</span>
+          <span class="status-item" id="status-objects">Objects: 0</span>
+          <span class="status-item tip" id="status-tip">Tip: Click and drag to draw obstacles</span>
+        </div>
+
+        <!-- Animation Timeline Panel - Uses Timeline.js component -->
+        <div class="timeline-panel" id="timeline-panel">
+          <!-- Timeline component renders here -->
+          <div id="timeline-container" style="height: 100%; display: flex; flex-direction: column;"></div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar - Properties -->
+      <div class="sidebar-right">
+        <!-- Chain Edit Panel (only visible in chain mode) -->
+        <div class="panel hidden" id="panel-chain-edit">
+          <div class="panel-header" style="background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan)); color: white;">
+            Chain Maps
+            <button class="btn-icon" id="btn-add-map-to-chain" title="Add current map to chain" style="color: white;">+</button>
+          </div>
+          <div class="panel-content">
+            <div class="chain-map-list" id="chain-map-list">
+              <!-- Maps rendered dynamically -->
+            </div>
+            <div style="margin-top: 10px; display: flex; gap: 5px;">
+              <button class="toolbar-btn small" id="btn-add-new-map-chain" style="flex: 1; font-size: 10px;">+ New Map</button>
+              <button class="toolbar-btn small" id="btn-add-existing-chain" style="flex: 1; font-size: 10px;">+ Existing</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Map Settings Panel (colors, grid) -->
+        <div class="panel collapsible" id="panel-map-settings">
+          <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            Map Settings
+            <span class="panel-arrow">&#9660;</span>
+          </div>
+          <div class="panel-content">
+            <div class="control-group">
+              <label class="control-label">Viewport Background</label>
+              <input type="color" id="viewport-bg-color" value="#1a1a2e">
+              <div style="font-size: 9px; color: var(--text-muted);">Area outside the map</div>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Floor Color</label>
+              <input type="color" id="floor-color" value="#e8e0d0">
+              <div style="font-size: 9px; color: var(--text-muted);">Map canvas background</div>
+            </div>
+            <div class="control-row">
+              <div class="control-group" style="flex: 1;">
+                <div class="checkbox-item">
+                  <input type="checkbox" id="show-grid" checked>
+                  <label for="show-grid">Show Grid</label>
+                </div>
+              </div>
+              <div class="control-group" style="width: 60px;">
+                <input type="color" id="grid-color" value="#cccccc">
+              </div>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Grid Size</label>
+              <input type="number" id="grid-size" value="50" min="10" max="200" step="10">
+            </div>
+          </div>
+        </div>
+
+        <!-- Validation Warning -->
+        <div class="validation-warning hidden" id="validation-warning">
+          Map needs a Start Zone and Finish Zone to be playable.
+        </div>
+
+        <!-- Properties Panel -->
+        <div class="panel" id="panel-properties">
+          <div class="panel-header">Properties</div>
+          <div class="panel-content">
+            <div class="no-selection" id="no-selection">
+              Select an obstacle to edit its properties
+            </div>
+
+            <div id="obstacle-properties" style="display: none;">
+              <div class="control-row">
+                <div class="control-group">
+                  <label class="control-label">X Position <button class="kf-btn" data-property="x" title="Add X keyframe at current time">&#9670;</button></label>
+                  <input type="number" id="prop-x" value="0">
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Y Position <button class="kf-btn" data-property="y" title="Add Y keyframe at current time">&#9670;</button></label>
+                  <input type="number" id="prop-y" value="0">
+                </div>
+              </div>
+
+              <div class="control-row">
+                <div class="control-group">
+                  <label class="control-label">Width</label>
+                  <input type="number" id="prop-width" value="80" min="10">
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Height</label>
+                  <input type="number" id="prop-height" value="25" min="10">
+                </div>
+              </div>
+
+              <div class="control-group" id="prop-radius-group" style="display: none;">
+                <label class="control-label">Radius</label>
+                <input type="number" id="prop-radius" value="20" min="5">
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Rotation (degrees) <button class="kf-btn" data-property="rotation" title="Add rotation keyframe at current time">&#9670;</button></label>
+                <input type="number" id="prop-angle" value="0" min="-360" max="360">
+              </div>
+
+              <div class="control-row">
+                <div class="control-group">
+                  <label class="control-label">Scale X <button class="kf-btn" data-property="scaleX" title="Add scaleX keyframe">&#9670;</button></label>
+                  <input type="number" id="prop-scaleX" value="1" min="0.1" max="5" step="0.1">
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Scale Y <button class="kf-btn" data-property="scaleY" title="Add scaleY keyframe">&#9670;</button></label>
+                  <input type="number" id="prop-scaleY" value="1" min="0.1" max="5" step="0.1">
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Color</label>
+                <input type="color" id="prop-color" value="#e74c3c">
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Behavior</label>
+                <div class="radio-group">
+                  <div class="radio-item">
+                    <input type="radio" name="behavior" id="behavior-static" value="static" checked>
+                    <label for="behavior-static">Static (normal obstacle)</label>
+                  </div>
+                  <div class="radio-item">
+                    <input type="radio" name="behavior" id="behavior-breakable" value="breakable">
+                    <label for="behavior-breakable">Breakable</label>
+                  </div>
+                  <div class="radio-item">
+                    <input type="radio" name="behavior" id="behavior-rotating" value="rotating">
+                    <label for="behavior-rotating">Rotating</label>
+                  </div>
+                  <div class="radio-item">
+                    <input type="radio" name="behavior" id="behavior-moving" value="moving">
+                    <label for="behavior-moving">Moving</label>
+                  </div>
+                  <div class="radio-item">
+                    <input type="radio" name="behavior" id="behavior-crusher" value="crusher">
+                    <label for="behavior-crusher">Crusher (eliminates balls)</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Breakable Settings -->
+              <div class="behavior-settings hidden" id="breakable-settings">
+                <div class="behavior-title">Breakable Settings</div>
+                <div class="control-group">
+                  <label class="control-label">Health (hits to destroy)</label>
+                  <input type="number" id="prop-health" value="3" min="1" max="10">
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Breakable by colors:</label>
+                  <div class="checkbox-group">
+                    <div class="checkbox-item">
+                      <input type="checkbox" id="breakable-red" checked>
+                      <label for="breakable-red" style="color: #ff4444;">Red</label>
+                    </div>
+                    <div class="checkbox-item">
+                      <input type="checkbox" id="breakable-blue" checked>
+                      <label for="breakable-blue" style="color: #4444ff;">Blue</label>
+                    </div>
+                    <div class="checkbox-item">
+                      <input type="checkbox" id="breakable-green">
+                      <label for="breakable-green" style="color: #44ff44;">Green</label>
+                    </div>
+                    <div class="checkbox-item">
+                      <input type="checkbox" id="breakable-yellow">
+                      <label for="breakable-yellow" style="color: #ffff44;">Yellow</label>
+                    </div>
+                    <div class="checkbox-item">
+                      <input type="checkbox" id="breakable-purple">
+                      <label for="breakable-purple" style="color: #ff44ff;">Purple</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rotating Settings -->
+              <div class="behavior-settings hidden" id="rotating-settings">
+                <div class="behavior-title">Rotating Settings</div>
+                <div class="control-group">
+                  <label class="control-label">Speed (RPM)</label>
+                  <input type="number" id="prop-rotation-speed" value="2" min="0.1" max="10" step="0.1">
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Direction</label>
+                  <div class="radio-group" style="flex-direction: row; gap: 20px;">
+                    <div class="radio-item">
+                      <input type="radio" name="rotation-dir" id="rotation-cw" value="cw" checked>
+                      <label for="rotation-cw">Clockwise</label>
+                    </div>
+                    <div class="radio-item">
+                      <input type="radio" name="rotation-dir" id="rotation-ccw" value="ccw">
+                      <label for="rotation-ccw">Counter-CW</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Moving Settings -->
+              <div class="behavior-settings hidden" id="moving-settings">
+                <div class="behavior-title">Moving Settings</div>
+                <div class="control-group">
+                  <label class="control-label">Direction</label>
+                  <div class="radio-group" style="flex-direction: row; gap: 20px;">
+                    <div class="radio-item">
+                      <input type="radio" name="move-dir" id="move-horizontal" value="horizontal" checked>
+                      <label for="move-horizontal">Horizontal</label>
+                    </div>
+                    <div class="radio-item">
+                      <input type="radio" name="move-dir" id="move-vertical" value="vertical">
+                      <label for="move-vertical">Vertical</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Distance (pixels)</label>
+                  <input type="number" id="prop-move-distance" value="100" min="10" max="500">
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Speed (pixels/sec)</label>
+                  <input type="number" id="prop-move-speed" value="50" min="10" max="200">
+                </div>
+              </div>
+
+              <!-- Crusher Settings -->
+              <div class="behavior-settings hidden" id="crusher-settings">
+                <div class="behavior-title">Crusher Settings</div>
+                <p style="color: #888; font-size: 11px; margin-bottom: 10px;">Crushers move across the map and eliminate balls that get trapped.</p>
+                <div class="control-group">
+                  <label class="control-label">Direction</label>
+                  <div class="radio-group" style="flex-direction: row; gap: 10px; flex-wrap: wrap;">
+                    <div class="radio-item">
+                      <input type="radio" name="crusher-dir" id="crusher-down" value="down" checked>
+                      <label for="crusher-down">Down</label>
+                    </div>
+                    <div class="radio-item">
+                      <input type="radio" name="crusher-dir" id="crusher-up" value="up">
+                      <label for="crusher-up">Up</label>
+                    </div>
+                    <div class="radio-item">
+                      <input type="radio" name="crusher-dir" id="crusher-right" value="right">
+                      <label for="crusher-right">Right</label>
+                    </div>
+                    <div class="radio-item">
+                      <input type="radio" name="crusher-dir" id="crusher-left" value="left">
+                      <label for="crusher-left">Left</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Speed (pixels/sec)</label>
+                  <input type="number" id="prop-crusher-speed" value="80" min="20" max="300">
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Reset Delay (ms)</label>
+                  <input type="number" id="prop-crusher-delay" value="2000" min="500" max="10000" step="100">
+                </div>
+              </div>
+
+              <div style="margin-top: 15px;">
+                <button class="toolbar-btn danger" id="btn-delete-obstacle" style="width: 100%;">Delete Obstacle</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animation Panel (for selected obstacle) -->
+        <div class="panel" id="panel-animation" style="display: none;">
+          <div class="panel-header">Keyframe Animation</div>
+          <div class="panel-content">
+            <div class="control-group">
+              <label class="control-label">Animation Status</label>
+              <div id="anim-status" style="font-size: 11px; color: var(--text-muted);">No animation</div>
+            </div>
+
+            <div class="control-group">
+              <div class="checkbox-item">
+                <input type="checkbox" id="auto-keyframe" checked>
+                <label for="auto-keyframe" style="color: var(--accent-yellow);">Auto-Keyframe (AE style)</label>
+              </div>
+              <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">
+                When ON: Moving object or changing position auto-creates keyframes
+              </div>
+            </div>
+
+            <div class="control-group" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+              <label class="control-label" style="color: var(--accent-cyan);">Record Keyframe at Current Time</label>
+              <div style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;">
+                <button class="toolbar-btn kf-record-btn" data-property="x" style="flex: 1; font-size: 10px;">◆ X</button>
+                <button class="toolbar-btn kf-record-btn" data-property="y" style="flex: 1; font-size: 10px;">◆ Y</button>
+                <button class="toolbar-btn kf-record-btn" data-property="rotation" style="flex: 1; font-size: 10px;">◆ Rot</button>
+              </div>
+              <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">
+                Tip: Move object first, then click to record its current position
+              </div>
+            </div>
+
+            <div class="control-group" style="margin-top: 10px;">
+              <button class="toolbar-btn danger" id="btn-clear-animation" style="width: 100%; font-size: 10px;">Clear All Keyframes</button>
+            </div>
+
+            <div class="control-group" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+              <label class="control-label">Debug</label>
+              <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                <button class="toolbar-btn" id="btn-debug-export" style="flex: 1; font-size: 10px;">Export Data</button>
+                <button class="toolbar-btn" id="btn-debug-log" style="flex: 1; font-size: 10px;">Log Animation</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone Properties (for Start/Finish) -->
+        <div class="panel" id="panel-zone-properties" style="display: none;">
+          <div class="panel-header">Zone Properties</div>
+          <div class="panel-content">
+            <div class="panel-hint" id="zone-hint">Start Zone: Where balls spawn at race start</div>
+            <div class="control-row">
+              <div class="control-group">
+                <label class="control-label">X Position</label>
+                <input type="number" id="zone-x" value="0">
+              </div>
+              <div class="control-group">
+                <label class="control-label">Y Position</label>
+                <input type="number" id="zone-y" value="0">
+              </div>
+            </div>
+            <div class="control-row">
+              <div class="control-group">
+                <label class="control-label">Width</label>
+                <input type="number" id="zone-width" value="200" min="50">
+              </div>
+              <div class="control-group">
+                <label class="control-label">Height</label>
+                <input type="number" id="zone-height" value="40" min="20">
+              </div>
+            </div>
+            <div style="margin-top: 15px;">
+              <button class="toolbar-btn danger" id="btn-delete-zone" style="width: 100%;">Delete Zone</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item Spawn Properties -->
+        <div class="panel" id="panel-item-properties" style="display: none;">
+          <div class="panel-header">Item Spawn Properties</div>
+          <div class="panel-content">
+            <div class="panel-hint">Configure item spawn point behavior</div>
+            <div class="control-row">
+              <div class="control-group">
+                <label class="control-label">X Position</label>
+                <input type="number" id="item-x" value="0">
+              </div>
+              <div class="control-group">
+                <label class="control-label">Y Position</label>
+                <input type="number" id="item-y" value="0">
+              </div>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Item Type</label>
+              <select id="item-type">
+                <option value="random">Random</option>
+                <option value="weapon_crate">Weapon Crate</option>
+                <option value="shield">Shield</option>
+                <option value="speed_boost">Speed Boost</option>
+                <option value="ghost">Ghost</option>
+                <option value="shrink">Shrink</option>
+                <option value="health_pack">Health Pack</option>
+                <option value="damage_boost">Damage Boost</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <div class="checkbox-item">
+                <input type="checkbox" id="item-spawn-on-start" checked>
+                <label for="item-spawn-on-start">Spawn on Race Start</label>
+              </div>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Respawn Time (ms, 0 = no respawn)</label>
+              <input type="number" id="item-respawn-time" value="0" min="0" step="1000">
+            </div>
+            <div style="margin-top: 15px;">
+              <button class="toolbar-btn danger" id="btn-delete-item" style="width: 100%;">Delete Item Spawn</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Boss Configuration Panel -->
+        <div class="panel" id="panel-boss-config">
+          <div class="panel-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" id="boss-panel-toggle">
+            Boss Configuration
+            <span id="boss-panel-arrow" style="font-size: 10px;">&#9660;</span>
+          </div>
+          <div class="panel-content" id="boss-panel-content">
+            <div class="control-group">
+              <div class="checkbox-item">
+                <input type="checkbox" id="boss-enabled">
+                <label for="boss-enabled" style="color: var(--accent-red);">Enable Boss for this Map</label>
+              </div>
+              <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">
+                Boss maps use ball damage to defeat the boss instead of a finish line
+              </div>
+            </div>
+
+            <div id="boss-settings" style="display: none;">
+              <div class="control-row" style="margin-top: 10px;">
+                <div class="control-group">
+                  <label class="control-label">Boss X</label>
+                  <input type="number" id="boss-x" value="400">
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Boss Y</label>
+                  <input type="number" id="boss-y" value="100">
+                </div>
+              </div>
+
+              <div class="control-row">
+                <div class="control-group">
+                  <label class="control-label">Width</label>
+                  <input type="number" id="boss-width" value="80" min="40" max="200">
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Height</label>
+                  <input type="number" id="boss-height" value="60" min="40" max="200">
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Health</label>
+                <input type="number" id="boss-health" value="100" min="10" max="500" step="10">
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Attack Pattern</label>
+                <select id="boss-pattern">
+                  <option value="spiral">Spiral - Rotating shots</option>
+                  <option value="spread">Spread - Fan pattern</option>
+                  <option value="aimed">Aimed - Targets balls</option>
+                  <option value="random">Random - Chaotic shots</option>
+                  <option value="burst">Burst - Rapid fire</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Attack Cooldown (ms)</label>
+                <input type="number" id="boss-cooldown" value="800" min="200" max="3000" step="100">
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Boss Color</label>
+                <input type="color" id="boss-color" value="#cc3300">
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Shape</label>
+                <div class="radio-group" style="flex-direction: row; gap: 15px;">
+                  <div class="radio-item">
+                    <input type="radio" name="boss-shape" id="boss-shape-rect" value="rectangle" checked>
+                    <label for="boss-shape-rect">Rectangle</label>
+                  </div>
+                  <div class="radio-item">
+                    <input type="radio" name="boss-shape" id="boss-shape-circle" value="circle">
+                    <label for="boss-shape-circle">Circle</label>
+                  </div>
+                  <div class="radio-item">
+                    <input type="radio" name="boss-shape" id="boss-shape-diamond" value="diamond">
+                    <label for="boss-shape-diamond">Diamond</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="control-group" style="margin-top: 10px;">
+                <label class="control-label">Win Condition</label>
+                <select id="boss-win-condition">
+                  <option value="boss">Kill Boss (no finish zone needed)</option>
+                  <option value="finish">Reach Finish Zone (boss is obstacle)</option>
+                  <option value="either">Either (kill boss OR reach finish)</option>
+                </select>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">
+                  How to complete this level
+                </div>
+              </div>
+
+              <div style="margin-top: 10px; padding: 10px; background: rgba(255, 68, 68, 0.1); border-radius: 4px;">
+                <div style="font-size: 11px; color: var(--accent-red);">
+                  <strong>Boss Map Tips:</strong>
+                </div>
+                <ul style="font-size: 10px; color: var(--text-secondary); margin: 5px 0 0 15px; padding: 0;">
+                  <li>Place obstacles for ball cover from projectiles</li>
+                  <li>Use ramps to help balls reach the boss</li>
+                  <li>Balls deal damage by bouncing into the boss</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Help Panel -->
+        <div class="panel">
+          <div class="panel-header">Quick Help</div>
+          <div class="panel-content">
+            <div class="panel-hint">
+              <strong>Drawing:</strong> Select a tool and click+drag on canvas<br><br>
+              <strong>Selection:</strong> Click to select, drag to move<br><br>
+              <strong>Resize:</strong> Drag corner handles<br><br>
+              <strong>Delete:</strong> Press Delete or Backspace<br><br>
+              <strong>Shortcuts:</strong> V=Select, R=Rectangle, C=Circle, S=Start, F=Finish
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Library Window -->
+  <div class="library-window hidden" id="library-window">
+    <div class="library-window-header" id="library-window-header">
+      <h3>Map Library & Chains</h3>
+      <button class="library-window-close" id="library-window-close">X</button>
+    </div>
+    <div class="library-window-content" style="display: flex; flex-direction: row; gap: 12px; padding: 12px; flex: 1; min-height: 0;">
+      <!-- Maps Section (Left) -->
+      <div class="library-section" style="flex: 1; display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+        <div class="library-section-header" style="background: var(--bg-primary); padding: 10px; border-bottom: 1px solid var(--border);">
+          <h4 style="margin: 0; font-size: 13px; color: var(--accent-cyan);">My Maps</h4>
+          <button class="btn-icon" id="btn-new-map-library" title="New Map">+</button>
+        </div>
+        <div class="map-list" id="library-map-list" style="flex: 1; overflow-y: auto; padding: 8px;">
+          <div class="empty-state">No maps yet.</div>
+        </div>
+        <div style="padding: 8px; font-size: 10px; color: var(--text-muted); background: var(--bg-primary); border-top: 1px solid var(--border);">
+          Drag maps to chain slots &rarr;
+        </div>
+      </div>
+
+      <!-- Chains Section (Right) -->
+      <div class="library-section" style="flex: 1; display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+        <div class="library-section-header" style="background: var(--bg-primary); padding: 10px; border-bottom: 1px solid var(--border);">
+          <h4 style="margin: 0; font-size: 13px; color: var(--accent-purple);">Map Chains</h4>
+          <button class="btn-icon" id="btn-new-chain-library" title="New Chain">+</button>
+        </div>
+        <div class="chain-list" id="library-chain-list" style="max-height: 100px; overflow-y: auto; padding: 8px; border-bottom: 1px solid var(--border);">
+          <div class="empty-state">No chains yet.</div>
+        </div>
+
+        <!-- Chain Editor (always visible when chain selected) -->
+        <div id="library-chain-editor" style="display: none; flex: 1; display: flex; flex-direction: column; padding: 8px; min-height: 0;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="library-chain-name" class="chain-name-input" value="Untitled Chain" style="flex: 1; font-size: 12px;">
+            <button class="btn-icon" id="btn-delete-chain-library" title="Delete Chain" style="color: var(--accent-red);">X</button>
+          </div>
+          <div class="chain-slots" id="library-chain-slots" style="flex: 1; overflow-y: auto; background: var(--bg-primary); border-radius: 4px; padding: 8px; min-height: 80px;">
+            <!-- Slots rendered dynamically -->
+          </div>
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            <button class="toolbar-btn" id="btn-edit-chain-mode" style="flex: 1; font-size: 11px; padding: 6px; background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan)); border: none;">Edit Chain</button>
+            <button class="toolbar-btn" id="btn-test-chain-library" style="flex: 1; font-size: 11px; padding: 6px;">Test</button>
+            <button class="toolbar-btn primary" id="btn-save-chain-library" style="flex: 1; font-size: 11px; padding: 6px;">Save</button>
+          </div>
+        </div>
+
+        <!-- Empty state when no chain selected -->
+        <div id="library-chain-empty" style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; color: var(--text-muted); font-size: 11px;">
+          Select a chain above or<br>click + to create one
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Map Modal -->
+  <div class="modal-overlay hidden" id="modal-new-map">
+    <div class="modal">
+      <div class="modal-header">Create New Map</div>
+      <div class="modal-body">
+        <div class="control-group">
+          <label class="control-label">Map Name</label>
+          <input type="text" id="new-map-name" value="Untitled Map" placeholder="Enter map name">
+        </div>
+        <div class="control-group">
+          <label class="control-label">Canvas Size</label>
+          <div class="control-row">
+            <div class="control-group">
+              <label class="control-label">Width</label>
+              <input type="number" id="new-map-width" value="800" min="400" max="1920">
+            </div>
+            <div class="control-group">
+              <label class="control-label">Height</label>
+              <input type="number" id="new-map-height" value="600" min="300" max="1080">
+            </div>
+          </div>
+          <div class="size-presets">
+            <button class="size-preset active" data-width="800" data-height="600">800x600</button>
+            <button class="size-preset" data-width="1024" data-height="768">1024x768</button>
+            <button class="size-preset" data-width="1280" data-height="720">1280x720</button>
+            <button class="size-preset" data-width="1920" data-height="1080">1920x1080</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="toolbar-btn" id="btn-cancel-new-map">Cancel</button>
+        <button class="toolbar-btn primary" id="btn-create-map">Create Map</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Welcome Modal -->
+  <div class="modal-overlay hidden" id="modal-welcome">
+    <div class="modal">
+      <div class="modal-header">Welcome to the Map Editor!</div>
+      <div class="modal-body welcome-content">
+        <p>Create custom racing maps for GMI Racing:</p>
+        <ol>
+          <li><strong>Draw obstacles</strong> using the Rectangle and Circle tools</li>
+          <li><strong>Place a Start Zone</strong> (green) where balls spawn</li>
+          <li><strong>Place a Finish Zone</strong> (red) as the goal</li>
+          <li><strong>Set obstacle behaviors:</strong> Static, Breakable, Rotating, or Moving</li>
+          <li><strong>Save and test</strong> your map in the game!</li>
+        </ol>
+        <p style="color: var(--text-muted); font-size: 12px;">
+          Tip: Use keyboard shortcuts for faster editing - V for Select, R for Rectangle, C for Circle
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="toolbar-btn primary" id="btn-get-started">Get Started</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./editor-bundle.js"></script>
+</body>
+</html>

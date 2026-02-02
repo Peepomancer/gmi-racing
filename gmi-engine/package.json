@@ -1,0 +1,31 @@
+{
+  "name": "gmi-engine",
+  "version": "1.0.0",
+  "description": "GMI Racing Engine - 2D Ball Racing Simulation",
+  "scripts": {
+    "build": "esbuild src/renderer.js --bundle --outfile=src/bundle.js --format=iife --platform=browser && esbuild src/editor.js --bundle --outfile=src/editor-bundle.js --format=iife --platform=browser && esbuild src/multi-sim.js --bundle --outfile=src/multi-sim-bundle.js --format=iife --platform=browser && esbuild src/sim-runner.js --bundle --outfile=src/sim-runner-bundle.js --format=iife --platform=browser",
+    "build:simrunner": "esbuild src/sim-runner.js --bundle --outfile=src/sim-runner-bundle.js --format=iife --platform=browser",
+    "build:game": "esbuild src/renderer.js --bundle --outfile=src/bundle.js --format=iife --platform=browser",
+    "build:editor": "esbuild src/editor.js --bundle --outfile=src/editor-bundle.js --format=iife --platform=browser",
+    "build:multisim": "esbuild src/multi-sim.js --bundle --outfile=src/multi-sim-bundle.js --format=iife --platform=browser",
+    "dev": "esbuild src/renderer.js --bundle --outfile=src/bundle.js --format=iife --platform=browser --servedir=src --serve=3000",
+    "watch": "esbuild src/renderer.js --bundle --outfile=src/bundle.js --format=iife --platform=browser --watch",
+    "watch:editor": "esbuild src/editor.js --bundle --outfile=src/editor-bundle.js --format=iife --platform=browser --watch",
+    "start": "npx http-server src -p 3000 -o"
+  },
+  "keywords": [
+    "racing",
+    "simulation",
+    "phaser"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "phaser": "^3.90.0",
+    "simplex-noise": "^4.0.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2"
+  }
+}

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GMI Multi-Sim Diagnostic</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #1a1a2e; color: #fff; padding: 20px; }
+    .section { background: #2a2a3e; padding: 15px; margin: 10px 0; border-radius: 8px; }
+    .success { color: #2ecc71; }
+    .error { color: #e74c3c; }
+    .warning { color: #f1c40f; }
+    pre { background: #333; padding: 10px; overflow: auto; max-height: 300px; font-size: 12px; }
+    h2 { margin-top: 0; color: #3498db; }
+    iframe { border: 2px solid #3498db; }
+  </style>
+</head>
+<body>
+  <h1>GMI Racing - Multi-Sim Diagnostic</h1>
+  <div id="output"></div>
+
+  <div class="section">
+    <h2>Test Simulation Frame</h2>
+    <p>This iframe loads a single simulation with Mixed Campaign. Check if obstacles appear:</p>
+    <iframe id="test-frame" width="400" height="300" src="sim-runner.html?simId=test&chainType=mixed&speed=1"></iframe>
+  </div>
+
+  <script type="module">
+    import { CHAIN_RACE_MAPS, CHAIN_BOSS_MAPS, CHAIN_MIXED, CHAIN_WEAPONS_TEST } from './game/systems/MapChain.js';
+
+    const output = document.getElementById('output');
+
+    function section(title) {
+      const div = document.createElement('div');
+      div.className = 'section';
+      div.innerHTML = `<h2>${title}</h2>`;
+      output.appendChild(div);
+      return div;
+    }
+
+    function log(parent, msg, type = 'success') {
+      const p = document.createElement('p');
+      p.className = type;
+      p.textContent = msg;
+      parent.appendChild(p);
+    }
+
+    function pre(parent, obj) {
+      const el = document.createElement('pre');
+      el.textContent = JSON.stringify(obj, null, 2);
+      parent.appendChild(el);
+    }
+
+    // Section 1: Chain Data
+    const sec1 = section('1. Chain Data Verification');
+
+    const chains = {
+      'CHAIN_RACE_MAPS': CHAIN_RACE_MAPS,
+      'CHAIN_BOSS_MAPS': CHAIN_BOSS_MAPS,
+      'CHAIN_MIXED': CHAIN_MIXED,
+      'CHAIN_WEAPONS_TEST': CHAIN_WEAPONS_TEST
+    };
+
+    for (const [name, chain] of Object.entries(chains)) {
+      if (!chain) {
+        log(sec1, `${name}: NOT DEFINED!`, 'error');
+      } else if (!Array.isArray(chain)) {
+        log(sec1, `${name}: Not an array!`, 'error');
+      } else {
+        log(sec1, `${name}: ${chain.length} maps`);
+        if (chain[0]) {
+          log(sec1, `  First map: "${chain[0].name}"`, chain[0].obstacles?.length > 0 ? 'success' : 'warning');
+          log(sec1, `  Obstacles: ${chain[0].obstacles?.length || 0}`, chain[0].obstacles?.length > 0 ? 'success' : 'error');
+        }
+      }
+    }
+
+    // Section 2: First Map Details
+    const sec2 = section('2. First Map of CHAIN_RACE_MAPS');
+    if (CHAIN_RACE_MAPS?.[0]) {
+      const map = CHAIN_RACE_MAPS[0];
+      log(sec2, `Name: ${map.name}`);
+      log(sec2, `Has .data property: ${!!map.data}`, map.data ? 'warning' : 'success');
+      log(sec2, `Has .obstacles: ${!!map.obstacles}`, map.obstacles ? 'success' : 'error');
+      log(sec2, `Obstacles count: ${map.obstacles?.length || 0}`);
+      log(sec2, `Has .startZone: ${!!map.startZone}`);
+      log(sec2, `Has .finishZone: ${!!map.finishZone}`);
+
+      if (map.obstacles?.length > 0) {
+        log(sec2, 'First obstacle:');
+        pre(sec2, map.obstacles[0]);
+      }
+    }
+
+    // Section 3: CHAIN_MIXED verification
+    const sec3 = section('3. CHAIN_MIXED Verification');
+    if (CHAIN_MIXED) {
+      log(sec3, `Total maps: ${CHAIN_MIXED.length}`);
+      log(sec3, `First map same as CHAIN_RACE_MAPS[0]: ${CHAIN_MIXED[0] === CHAIN_RACE_MAPS[0]}`);
+
+      CHAIN_MIXED.forEach((map, i) => {
+        const obstCount = map.obstacles?.length || 0;
+        log(sec3, `  Map ${i+1}: "${map.name}" - ${obstCount} obstacles`, obstCount > 0 ? 'success' : 'error');
+      });
+    }
+
+    // Section 4: Simulate editorMapData logic
+    const sec4 = section('4. Simulate RaceScene Data Flow');
+    const testMap = CHAIN_RACE_MAPS[0];
+    const editorMapData = testMap;
+    const editorData = editorMapData.data || editorMapData;
+
+    log(sec4, `editorMapData set to testMap`);
+    log(sec4, `editorMapData.data exists: ${!!editorMapData.data}`);
+    log(sec4, `editorData === testMap: ${editorData === testMap}`, editorData === testMap ? 'success' : 'error');
+    log(sec4, `editorData.obstacles: ${editorData.obstacles?.length || 0}`, editorData.obstacles?.length > 0 ? 'success' : 'error');
+
+    log(sec4, 'Constructed mapData would be:');
+    const mapData = {
+      obstacles: editorData.obstacles || [],
+      startZone: editorData.startZone || null,
+      finishZone: editorData.finishZone || null,
+    };
+    pre(sec4, { obstacleCount: mapData.obstacles.length, startZone: !!mapData.startZone, finishZone: !!mapData.finishZone });
+
+    // Final summary
+    const secFinal = section('SUMMARY');
+    const allGood = CHAIN_MIXED?.[0]?.obstacles?.length > 0 && editorData.obstacles?.length > 0;
+    if (allGood) {
+      log(secFinal, 'Chain data looks CORRECT. Issue is likely in rendering or config passing.', 'success');
+    } else {
+      log(secFinal, 'Chain data has PROBLEMS. Check the errors above.', 'error');
+    }
+  </script>
+</body>
+</html>
