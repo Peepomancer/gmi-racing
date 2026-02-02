@@ -13,6 +13,7 @@ import { WEAPON_TYPES } from '../systems/WeaponDefinitions.js';
 import { getPendingGameConfig } from '../Game.js';
 import { renderBallGraphics, renderHPBar, updateHPBar } from '../rendering/BallRenderer.js';
 import { FinishTrackerUI } from '../rendering/FinishTrackerUI.js';
+import { BreakableManager } from '../managers/BreakableManager.js';
 
 export class RaceScene extends Phaser.Scene {
   constructor() {
@@ -48,6 +49,9 @@ export class RaceScene extends Phaser.Scene {
 
     // UI components
     this.finishTrackerUI = null;
+
+    // Managers
+    this.breakableManager = null;
   }
 
   /**
@@ -203,6 +207,9 @@ export class RaceScene extends Phaser.Scene {
     this.itemSystem = new ItemSystem(this);
     this.inventorySystem = new InventorySystem(this);
     this.rouletteSystem = new RouletteSystem(this);
+
+    // Initialize managers
+    this.breakableManager = new BreakableManager(this);
 
     // Create graphics layers
     this.bgLayer = this.add.graphics();
@@ -416,9 +423,16 @@ export class RaceScene extends Phaser.Scene {
             // Find the obstacle
             const obstacle = this.obstacles.find(o => o.body === otherBody);
 
-            // Handle breakable obstacles
-            if (obstacle && obstacle.breakable && !obstacle.destroyed) {
-              this.handleBreakableCollision(obstacle, ball);
+            // Handle breakable obstacles using manager
+            if (obstacle && obstacle.breakable && !obstacle.destroyed && this.breakableManager) {
+              this.breakableManager.handleCollision(obstacle, ball, (obs) => {
+                const color = obs.data?.color ? parseInt(obs.data.color.replace('#', ''), 16) : 0x4a5568;
+                this.drawObstacleGraphics(obs.graphics, {
+                  ...obs.data,
+                  health: obs.health,
+                  maxHealth: obs.maxHealth
+                }, color);
+              });
             }
           }
 
@@ -2225,99 +2239,6 @@ export class RaceScene extends Phaser.Scene {
     if (this.finishTrackerUI) this.finishTrackerUI.update(this.balls);
   }
 
-  /**
-   * Handle collision with breakable obstacle
-   */
-  handleBreakableCollision(obstacle, ball) {
-    // Safety checks
-    if (!obstacle || !ball || obstacle.destroyed) return;
-
-    // Check if this ball color can break this obstacle
-    const breakableBy = obstacle.breakableBy || [];
-    const canBreak = breakableBy.length === 0 ||
-                     breakableBy.includes(ball.name);
-
-    // Log damage attempt
-    const damageLog = {
-      time: Date.now(),
-      obstacleId: obstacle.data?.id || 'unknown',
-      ballName: ball?.name || 'unknown',
-      ballColor: ball?.color || 'unknown',
-      canBreak: canBreak,
-      healthBefore: obstacle.health,
-      maxHealth: obstacle.maxHealth,
-      breakableBy: breakableBy,
-      position: obstacle.body ? { x: obstacle.body.position.x, y: obstacle.body.position.y } : null
-    };
-
-    if (!canBreak) {
-      damageLog.result = 'BLOCKED';
-      console.log('[BREAKABLE] Damage blocked:', damageLog);
-      return;
-    }
-
-    // Reduce health based on ball's damage stat (from volume rank)
-    const damage = ball.damage || 1;
-    obstacle.health -= damage;
-    damageLog.damage = damage;
-    damageLog.healthAfter = obstacle.health;
-    damageLog.result = obstacle.health <= 0 ? 'DESTROYED' : 'DAMAGED';
-    console.log('[BREAKABLE] Damage applied:', damageLog);
-
-    // Visual feedback - flash
-    if (obstacle.graphics) {
-      obstacle.graphics.setAlpha(0.3);
-      this.time.delayedCall(100, () => {
-        if (obstacle.graphics && !obstacle.destroyed) {
-          obstacle.graphics.setAlpha(1);
-          // Redraw with updated health indicator
-          const color = obstacle.data?.color ? parseInt(obstacle.data.color.replace('#', ''), 16) : 0x4a5568;
-          this.drawObstacleGraphics(obstacle.graphics, {
-            ...obstacle.data,
-            health: obstacle.health,
-            maxHealth: obstacle.maxHealth
-          }, color);
-        }
-      });
-    }
-
-    // Check if destroyed
-    if (obstacle.health <= 0) {
-      this.destroyObstacle(obstacle);
-    }
-  }
-
-  /**
-   * Destroy an obstacle (with effect)
-   */
-  destroyObstacle(obstacle) {
-    obstacle.destroyed = true;
-
-    // Remove physics body
-    if (obstacle.body) {
-      this.matter.world.remove(obstacle.body);
-    }
-
-    // Destruction effect
-    if (obstacle.graphics) {
-      // Simple fade out
-      this.tweens.add({
-        targets: obstacle.graphics,
-        alpha: 0,
-        scaleX: 1.5,
-        scaleY: 1.5,
-        duration: 200,
-        onComplete: () => {
-          if (obstacle.graphics) {
-            obstacle.graphics.destroy();
-            obstacle.graphics = null;
-          }
-        }
-      });
-    }
-
-    console.log('[BREAKABLE] Obstacle destroyed:', obstacle.data.id || 'unknown');
-  }
 
   updateProgress() {
     const startY = this.spawnY || (this.gameHeight - 60);
