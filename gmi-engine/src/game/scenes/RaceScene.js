@@ -12,6 +12,7 @@ import { RouletteSystem } from '../systems/RouletteSystem.js';
 import { WEAPON_TYPES } from '../systems/WeaponDefinitions.js';
 import { getPendingGameConfig } from '../Game.js';
 import { renderBallGraphics, renderHPBar, updateHPBar } from '../rendering/BallRenderer.js';
+import { FinishTrackerUI } from '../rendering/FinishTrackerUI.js';
 
 export class RaceScene extends Phaser.Scene {
   constructor() {
@@ -44,6 +45,9 @@ export class RaceScene extends Phaser.Scene {
     // Turbo mode
     this.turboMode = false;
     this.timeScale = 1;
+
+    // UI components
+    this.finishTrackerUI = null;
   }
 
   /**
@@ -765,7 +769,8 @@ export class RaceScene extends Phaser.Scene {
     this.lanes = mapData.lanes || 5;
 
     // Create finish tracker display
-    this.createFinishTracker();
+    this.finishTrackerUI = new FinishTrackerUI(this);
+    this.finishTrackerUI.create();
 
     // Load keyframe animations for obstacles (from editor map)
     // animationData was already extracted above for pre-computing animated obstacle IDs
@@ -2217,7 +2222,7 @@ export class RaceScene extends Phaser.Scene {
   updateFinishTrackerWithElimination(eliminatedBall) {
     // The regular updateFinishTracker will handle this
     // Just need to call it after elimination
-    this.updateFinishTracker();
+    if (this.finishTrackerUI) this.finishTrackerUI.update(this.balls);
   }
 
   /**
@@ -2374,7 +2379,7 @@ export class RaceScene extends Phaser.Scene {
         };
 
         // Update finish tracker
-        this.updateFinishTracker();
+        if (this.finishTrackerUI) this.finishTrackerUI.update(this.balls);
 
         // Check if we should start countdown timer (non-boss races only)
         this.checkHalfFinishedTimer();
@@ -2509,7 +2514,7 @@ export class RaceScene extends Phaser.Scene {
     }
 
     // Update tracker and complete race
-    this.updateFinishTracker();
+    if (this.finishTrackerUI) this.finishTrackerUI.update(this.balls);
     this.onRaceComplete();
   }
 
@@ -2522,167 +2527,6 @@ export class RaceScene extends Phaser.Scene {
            ballX <= zone.x + zone.width &&
            ballY >= zone.y &&
            ballY <= zone.y + zone.height;
-  }
-
-  /**
-   * Create finish tracker display
-   */
-  createFinishTracker() {
-    // Destroy old tracker
-    if (this.finishTrackerContainer) {
-      this.finishTrackerContainer.destroy();
-    }
-
-    // Create container for finish tracker
-    this.finishTrackerContainer = this.add.container(10, 10);
-
-    // Background
-    const bg = this.add.graphics();
-    bg.fillStyle(0x000000, 0.7);
-    bg.fillRoundedRect(0, 0, 150, 30, 5);
-    this.finishTrackerContainer.add(bg);
-
-    // Title
-    const title = this.add.text(75, 8, 'FINISH ORDER', {
-      fontSize: '11px',
-      color: '#00ffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
-    this.finishTrackerContainer.add(title);
-
-    // Will be populated as balls finish
-    this.finishTrackerItems = [];
-  }
-
-  /**
-   * Update finish tracker when a ball finishes or is eliminated
-   */
-  updateFinishTracker() {
-    if (!this.finishTrackerContainer) return;
-
-    // Get finished balls in order
-    const finishedBalls = this.balls
-      .filter(b => b.finished)
-      .sort((a, b) => a.finishPosition - b.finishPosition);
-
-    // Get eliminated balls
-    const eliminatedBalls = this.balls.filter(b => b.eliminated);
-
-    const totalEntries = finishedBalls.length + eliminatedBalls.length;
-
-    // Update background height
-    const bg = this.finishTrackerContainer.list[0];
-    bg.clear();
-    bg.fillStyle(0x000000, 0.7);
-    bg.fillRoundedRect(0, 0, 150, 30 + totalEntries * 22, 5);
-
-    // Clear old items
-    this.finishTrackerItems.forEach(item => item.destroy());
-    this.finishTrackerItems = [];
-
-    // Add finished balls
-    finishedBalls.forEach((ball, index) => {
-      const y = 28 + index * 22;
-
-      // Position medal
-      const posText = this.add.text(10, y, this.getPositionText(ball.finishPosition), {
-        fontSize: '12px',
-        color: this.getPositionColor(ball.finishPosition),
-        fontStyle: 'bold'
-      });
-      this.finishTrackerContainer.add(posText);
-      this.finishTrackerItems.push(posText);
-
-      // Ball color indicator
-      const ballDot = this.add.graphics();
-      ballDot.fillStyle(parseInt(ball.color.replace('#', ''), 16), 1);
-      ballDot.fillCircle(45, y + 6, 6);
-      ballDot.lineStyle(1, 0xffffff, 0.5);
-      ballDot.strokeCircle(45, y + 6, 6);
-      this.finishTrackerContainer.add(ballDot);
-      this.finishTrackerItems.push(ballDot);
-
-      // Ball name
-      const nameText = this.add.text(55, y, ball.name, {
-        fontSize: '11px',
-        color: '#ffffff'
-      });
-      this.finishTrackerContainer.add(nameText);
-      this.finishTrackerItems.push(nameText);
-
-      // Time
-      const timeText = this.add.text(140, y, this.formatTime(ball.finishTime), {
-        fontSize: '10px',
-        color: '#aaaaaa'
-      }).setOrigin(1, 0);
-      this.finishTrackerContainer.add(timeText);
-      this.finishTrackerItems.push(timeText);
-    });
-
-    // Add eliminated balls at the bottom
-    eliminatedBalls.forEach((ball, index) => {
-      const y = 28 + (finishedBalls.length + index) * 22;
-
-      // Skull/X indicator for eliminated
-      const posText = this.add.text(10, y, 'OUT', {
-        fontSize: '10px',
-        color: '#ff4444',
-        fontStyle: 'bold'
-      });
-      this.finishTrackerContainer.add(posText);
-      this.finishTrackerItems.push(posText);
-
-      // Ball color indicator with X
-      const ballDot = this.add.graphics();
-      ballDot.fillStyle(parseInt(ball.color.replace('#', ''), 16), 0.5);
-      ballDot.fillCircle(45, y + 6, 6);
-      ballDot.lineStyle(2, 0xff0000, 1);
-      ballDot.lineBetween(40, y + 1, 50, y + 11);
-      ballDot.lineBetween(50, y + 1, 40, y + 11);
-      this.finishTrackerContainer.add(ballDot);
-      this.finishTrackerItems.push(ballDot);
-
-      // Ball name (strikethrough effect with color)
-      const nameText = this.add.text(55, y, ball.name, {
-        fontSize: '11px',
-        color: '#666666'
-      });
-      this.finishTrackerContainer.add(nameText);
-      this.finishTrackerItems.push(nameText);
-
-      // Elimination reason
-      const reasonText = this.add.text(140, y, ball.eliminationReason || 'crushed', {
-        fontSize: '9px',
-        color: '#ff4444'
-      }).setOrigin(1, 0);
-      this.finishTrackerContainer.add(reasonText);
-      this.finishTrackerItems.push(reasonText);
-    });
-  }
-
-  getPositionText(pos) {
-    switch (pos) {
-      case 1: return '1st';
-      case 2: return '2nd';
-      case 3: return '3rd';
-      default: return pos + 'th';
-    }
-  }
-
-  getPositionColor(pos) {
-    switch (pos) {
-      case 1: return '#ffd700'; // Gold
-      case 2: return '#c0c0c0'; // Silver
-      case 3: return '#cd7f32'; // Bronze
-      default: return '#888888';
-    }
-  }
-
-  formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const tenths = Math.floor((seconds % 1) * 10);
-    return `${mins}:${secs.toString().padStart(2, '0')}.${tenths}`;
   }
 
   onRaceComplete() {
@@ -2895,7 +2739,9 @@ export class RaceScene extends Phaser.Scene {
     }
 
     // Reset finish tracker
-    this.createFinishTracker();
+    if (this.finishTrackerUI) {
+      this.finishTrackerUI.create();
+    }
 
     // Clear and reinitialize weapon/item systems
     if (this.weaponSystem) {
