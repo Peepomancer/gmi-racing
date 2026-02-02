@@ -11,6 +11,7 @@ import { InventorySystem } from '../systems/InventorySystem.js';
 import { RouletteSystem } from '../systems/RouletteSystem.js';
 import { WEAPON_TYPES } from '../systems/WeaponDefinitions.js';
 import { getPendingGameConfig } from '../Game.js';
+import { renderBallGraphics, renderHPBar, updateHPBar } from '../rendering/BallRenderer.js';
 
 export class RaceScene extends Phaser.Scene {
   constructor() {
@@ -1110,22 +1111,8 @@ export class RaceScene extends Phaser.Scene {
             label: 'ball'
           });
 
-          // Create graphics
-          const graphics = this.add.graphics();
-          const colorNum = parseInt(colorData.color.replace('#', ''), 16);
-
-          graphics.lineStyle(3, 0x000000, 1);
-          graphics.strokeCircle(0, 0, radius);
-          graphics.fillStyle(colorNum, 1);
-          graphics.fillCircle(0, 0, radius - 2);
-
-          // Eyes
-          graphics.fillStyle(0xffffff, 1);
-          graphics.fillRect(-radius/3 - 3, -radius/4, 6, 6);
-          graphics.fillRect(radius/3 - 3, -radius/4, 6, 6);
-          graphics.fillStyle(0x000000, 1);
-          graphics.fillRect(-radius/3 - 1, -radius/4 + 2, 2, 2);
-          graphics.fillRect(radius/3 - 1, -radius/4 + 2, 2, 2);
+          // Create graphics using extracted renderer
+          const graphics = renderBallGraphics(this, radius, colorData.color);
 
           // Get stats from volume system based on ball name
           const stats = volumeSystem.getStatsForBall(colorData.name);
@@ -1133,14 +1120,8 @@ export class RaceScene extends Phaser.Scene {
             console.warn(`[RaceScene] No stats found for ball ${colorData.name}, using defaults`);
           }
 
-          // Create HP bar graphics (positioned above ball)
-          const hpBarBg = this.add.graphics();
-          hpBarBg.fillStyle(0x333333, 0.8);
-          hpBarBg.fillRect(-15, -radius - 12, 30, 6);
-
-          const hpBar = this.add.graphics();
-          hpBar.fillStyle(0x00ff00, 1);
-          hpBar.fillRect(-14, -radius - 11, 28, 4);
+          // Create HP bar using extracted renderer
+          const { hpBar, hpBarBg } = renderHPBar(this, radius);
 
           this.balls.push({
             body,
@@ -1422,18 +1403,8 @@ export class RaceScene extends Phaser.Scene {
           ball.hpBar.x = ball.body.position.x;
           ball.hpBar.y = ball.body.position.y;
 
-          // Redraw HP bar based on current HP
-          const hpPercent = Math.max(0, ball.hp / ball.maxHp);
-          const barWidth = Math.round(28 * hpPercent);
-          ball.hpBar.clear();
-
-          // Color based on HP: green > yellow > red
-          let hpColor = 0x00ff00;
-          if (hpPercent < 0.3) hpColor = 0xff0000;
-          else if (hpPercent < 0.6) hpColor = 0xffaa00;
-
-          ball.hpBar.fillStyle(hpColor, 1);
-          ball.hpBar.fillRect(-14, -ball.radius - 11, barWidth, 4);
+          // Update HP bar using extracted renderer
+          updateHPBar(ball.hpBar, ball.hp, ball.maxHp, ball.radius);
         }
       }
 

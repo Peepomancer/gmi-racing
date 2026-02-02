@@ -11,7 +11,8 @@
     "dev": "esbuild src/renderer.js --bundle --outfile=src/bundle.js --format=iife --platform=browser --servedir=src --serve=3000",
     "watch": "esbuild src/renderer.js --bundle --outfile=src/bundle.js --format=iife --platform=browser --watch",
     "watch:editor": "esbuild src/editor.js --bundle --outfile=src/editor-bundle.js --format=iife --platform=browser --watch",
-    "start": "npx http-server src -p 3000 -o"
+    "start": "npx http-server src -p 3000 -o",
+    "test:refactor": "node test-runner.js"
   },
   "keywords": [
     "racing",
@@ -26,6 +27,7 @@
     "simplex-noise": "^4.0.3"
   },
   "devDependencies": {
-    "esbuild": "^0.27.2"
+    "esbuild": "^0.27.2",
+    "puppeteer": "^22.15.0"
   }
 }
