@@ -95,6 +95,36 @@ const WEAPON_DEFS = {
   DAMAGE_BUFF: { name: 'Damage Up', damage: 0, cooldown: 0, type: 'buff', effect: 'damage', multiplier: 2 }
 };
 
+// Centralized configuration for simulation parameters
+// All magic numbers extracted here for easy tuning
+const SIM_CONFIG = {
+  // Ball physics
+  ball: {
+    radius: 15,
+    defaultSpeed: 5,
+    restitution: 1,
+    friction: 0,
+    frictionAir: 0,
+    hp: 100,
+    baseDamage: 10
+  },
+
+  // Safety systems - prevent stuck balls and infinite races
+  safety: {
+    outOfBoundsMargin: 50,        // pixels beyond map edge to detect escape
+    stuckCheckInterval: 60,       // frames between stuck checks (~1s at 60fps)
+    stuckThreshold: 5,            // consecutive stuck checks before push
+    stuckMinMovement: 2,          // min pixels moved to not be stuck
+    raceTimeoutMs: 30000,         // 30s max per race (real time)
+    globalTimeoutMs: 45000        // 45s max per scene total
+  },
+
+  // Points awarded by position
+  points: {
+    position: [10, 8, 6, 4, 2]    // 1st through 5th place
+  }
+};
+
 // Initialize volume system
 volumeSystem.initialize();
 
@@ -437,9 +467,9 @@ class SimRaceScene extends Phaser.Scene {
       const pos = positions[i];
 
       const body = this.matter.add.circle(pos.x, pos.y, radius, {
-        restitution: 1,
-        friction: 0,
-        frictionAir: 0,
+        restitution: SIM_CONFIG.ball.restitution,
+        friction: SIM_CONFIG.ball.friction,
+        frictionAir: SIM_CONFIG.ball.frictionAir,
         label: 'ball'
       });
 
@@ -465,11 +495,11 @@ class SimRaceScene extends Phaser.Scene {
 
       // EQUAL STATS for all balls (fair racing - bypasses VolumeSystem)
       // This ensures ~20% win rate for each ball instead of Red/Blue dominance
-      const stats = { hp: 100, maxHp: 100, speed: 1.0 };
+      const stats = { hp: SIM_CONFIG.ball.hp, maxHp: SIM_CONFIG.ball.hp, speed: 1.0 };
 
       // EQUAL DAMAGE for all balls (fair boss fights)
       // Weapons determine damage output instead
-      const baseDamage = 10;
+      const baseDamage = SIM_CONFIG.ball.baseDamage;
 
       // Get weapons this ball has from previous rounds
       const ballWeapons = weaponStats.ballWeapons[colorData.name] || [];
@@ -482,8 +512,8 @@ class SimRaceScene extends Phaser.Scene {
         radius,
         finished: false,
         finishPosition: null,
-        hp: stats?.hp || 100,
-        maxHp: stats?.maxHp || 100,
+        hp: stats?.hp || SIM_CONFIG.ball.hp,
+        maxHp: stats?.maxHp || SIM_CONFIG.ball.hp,
         speed: stats?.speed || 1.0,
         damage: baseDamage,
         weapons: ballWeapons.map(id => ({
@@ -517,7 +547,7 @@ class SimRaceScene extends Phaser.Scene {
         const vel = ballBody.velocity;
         const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
         if (speed > 0.1) {
-          const effectiveSpeed = 5 * (ball.speed || 1.0);
+          const effectiveSpeed = SIM_CONFIG.ball.defaultSpeed * (ball.speed || 1.0);
           const twist = (Math.random() - 0.5) * 0.6;
           const currentAngle = Math.atan2(vel.y, vel.x);
 
@@ -764,7 +794,7 @@ class SimRaceScene extends Phaser.Scene {
 
     // Track points (same as regular race)
     results.forEach((r, idx) => {
-      const points = [10, 8, 6, 4, 2][idx] || 0;
+      const points = SIM_CONFIG.points.position[idx] || 0;
       cumulativePoints[r.name] += points;
     });
 
@@ -810,7 +840,7 @@ class SimRaceScene extends Phaser.Scene {
     // Use actual game dimensions
     const mapWidth = this.gameWidth || 800;
     const mapHeight = this.gameHeight || 600;
-    const margin = 50; // Reduced margin for faster detection
+    const margin = SIM_CONFIG.safety.outOfBoundsMargin;
 
     this.balls.forEach(ball => {
       if (ball.finished || !ball.body) return;
@@ -858,11 +888,11 @@ class SimRaceScene extends Phaser.Scene {
 
   // Check for balls that are stuck (not moving) and handle them
   checkStuckBalls() {
-    // Only check every 60 frames (~1 second at 60fps)
-    if (this.frameCount % 60 !== 0) return;
+    // Only check every N frames (~1 second at 60fps)
+    if (this.frameCount % SIM_CONFIG.safety.stuckCheckInterval !== 0) return;
 
-    const STUCK_THRESHOLD = 5; // Frames of no movement before considered stuck
-    const MIN_MOVEMENT = 2; // Minimum pixels moved to not be considered stuck
+    const STUCK_THRESHOLD = SIM_CONFIG.safety.stuckThreshold;
+    const MIN_MOVEMENT = SIM_CONFIG.safety.stuckMinMovement;
 
     this.balls.forEach(ball => {
       if (ball.finished || !ball.body) return;
@@ -921,7 +951,7 @@ class SimRaceScene extends Phaser.Scene {
     }
 
     const elapsed = Date.now() - this.sceneStartRealTime;
-    const GLOBAL_TIMEOUT_MS = 45000; // 45 seconds max per scene (race + transitions)
+    const GLOBAL_TIMEOUT_MS = SIM_CONFIG.safety.globalTimeoutMs;
 
     if (elapsed > GLOBAL_TIMEOUT_MS && !this.globalTimeoutTriggered) {
       this.globalTimeoutTriggered = true;
@@ -970,7 +1000,7 @@ class SimRaceScene extends Phaser.Scene {
 
     // Award points
     results.forEach((r, idx) => {
-      const points = [10, 8, 6, 4, 2][idx] || 0;
+      const points = SIM_CONFIG.points.position[idx] || 0;
       cumulativePoints[r.name] += points;
     });
 
@@ -1001,7 +1031,7 @@ class SimRaceScene extends Phaser.Scene {
     }
 
     const elapsed = Date.now() - this.raceStartRealTime;
-    const TIMEOUT_MS = 30000; // 30 seconds real time max per race
+    const TIMEOUT_MS = SIM_CONFIG.safety.raceTimeoutMs;
 
     if (elapsed > TIMEOUT_MS) {
       console.log(`[SimRaceScene] Race timeout after ${(elapsed / 1000).toFixed(0)}s real time, force completing...`);
@@ -1239,7 +1269,7 @@ class SimRaceScene extends Phaser.Scene {
 
     // Track points
     results.forEach((r, idx) => {
-      const points = [10, 8, 6, 4, 2][idx] || 0;
+      const points = SIM_CONFIG.points.position[idx] || 0;
       cumulativePoints[r.name] += points;
     });
 
