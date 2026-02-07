@@ -14,7 +14,7 @@ const CONFIG = {
   simCount: 16,
   chainType: 'mixed',
   speed: 4,
-  port: 3001,
+  port: 3000,  // Matches npm start
   timeout: 180000, // 3 minutes max
 };
 
