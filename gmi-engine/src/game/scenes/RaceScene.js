@@ -15,6 +15,7 @@ import { renderBallGraphics, renderHPBar, updateHPBar } from '../rendering/BallR
 import { FinishTrackerUI } from '../rendering/FinishTrackerUI.js';
 import { BreakableManager } from '../managers/BreakableManager.js';
 import { CrushDetector } from '../managers/CrushDetector.js';
+import { SpecialObstacleManager } from '../managers/SpecialObstacleManager.js';
 
 export class RaceScene extends Phaser.Scene {
   constructor() {
@@ -54,6 +55,7 @@ export class RaceScene extends Phaser.Scene {
     // Managers
     this.breakableManager = null;
     this.crushDetector = null;
+    this.specialObstacleManager = null;
   }
 
   /**
@@ -213,6 +215,7 @@ export class RaceScene extends Phaser.Scene {
     // Initialize managers
     this.breakableManager = new BreakableManager(this);
     this.crushDetector = new CrushDetector(this);
+    this.specialObstacleManager = new SpecialObstacleManager(this, this.crushDetector);
 
     // Create graphics layers
     this.bgLayer = this.add.graphics();
@@ -1372,7 +1375,7 @@ export class RaceScene extends Phaser.Scene {
       const deltaSeconds = delta / 1000;
 
       // Update special obstacles (rotating, moving)
-      this.updateSpecialObstacles(deltaSeconds);
+      this.specialObstacleManager.update(deltaSeconds);
 
       // Update boss system (projectiles, etc.)
       if (this.bossSystem && this.isRacing) {
@@ -1597,116 +1600,6 @@ export class RaceScene extends Phaser.Scene {
     } catch (error) {
       console.error('[RaceScene] Error in update loop:', error);
     }
-  }
-
-  /**
-   * Update special obstacles (rotating, moving)
-   */
-  updateSpecialObstacles(deltaSeconds) {
-    this.obstacles.forEach(obs => {
-      if (obs.destroyed) return;
-
-      // Handle rotating obstacles
-      if (obs.rotating && obs.graphics) {
-        const rpm = obs.rotationSpeed || 2;
-        const direction = obs.rotationDirection === 'ccw' ? -1 : 1;
-        const rotationAmount = (rpm * Math.PI * 2 / 60) * deltaSeconds * direction;
-
-        // Update graphics rotation
-        obs.graphics.rotation += rotationAmount;
-
-        // Update physics body rotation
-        this.matter.body.setAngle(obs.body, obs.body.angle + rotationAmount);
-      }
-
-      // Handle moving obstacles
-      if (obs.moving && obs.graphics) {
-        const speed = obs.moveSpeed || 50;
-        const distance = obs.moveDistance || 100;
-
-        // Update phase (oscillates 0 to 1 and back)
-        obs.movePhase += (speed / distance) * deltaSeconds;
-        if (obs.movePhase > 2) obs.movePhase -= 2;
-
-        // Calculate offset (ping-pong motion)
-        const t = obs.movePhase <= 1 ? obs.movePhase : 2 - obs.movePhase;
-        const offset = (t - 0.5) * distance;
-
-        let newX = obs.moveStartX;
-        let newY = obs.moveStartY;
-
-        if (obs.moveDirection === 'horizontal') {
-          newX = obs.moveStartX + offset;
-        } else {
-          newY = obs.moveStartY + offset;
-        }
-
-        // Update graphics position
-        obs.graphics.x = newX;
-        obs.graphics.y = newY;
-
-        // Update physics body position
-        this.matter.body.setPosition(obs.body, { x: newX, y: newY });
-      }
-
-      // Handle crusher obstacles - ONLY move when race is active
-      if (obs.crusher && obs.graphics && this.isRacing) {
-        if (obs.crusherActive) {
-          const speed = obs.crusherSpeed || 80;
-          const currentPos = obs.body.position;
-          let newX = currentPos.x;
-          let newY = currentPos.y;
-          let reachedEnd = false;
-
-          // Move in crusher direction
-          switch (obs.crusherDirection) {
-            case 'down':
-              newY += speed * deltaSeconds;
-              if (newY >= this.gameHeight - 20) reachedEnd = true;
-              break;
-            case 'up':
-              newY -= speed * deltaSeconds;
-              if (newY <= 20) reachedEnd = true;
-              break;
-            case 'right':
-              newX += speed * deltaSeconds;
-              if (newX >= this.gameWidth - 20) reachedEnd = true;
-              break;
-            case 'left':
-              newX -= speed * deltaSeconds;
-              if (newX <= 20) reachedEnd = true;
-              break;
-          }
-
-          // Update position
-          obs.graphics.x = newX;
-          obs.graphics.y = newY;
-          this.matter.body.setPosition(obs.body, { x: newX, y: newY });
-
-          // Check for crushed balls
-          this.crushDetector.checkCrushedBalls(obs);
-
-          // If reached end, start reset timer
-          if (reachedEnd) {
-            obs.crusherActive = false;
-            obs.crusherResetTimer = obs.crusherResetDelay || 2000;
-          }
-        } else {
-          // Waiting to reset
-          obs.crusherResetTimer -= deltaSeconds * 1000;
-          if (obs.crusherResetTimer <= 0) {
-            // Reset to start position
-            obs.graphics.x = obs.crusherStartX;
-            obs.graphics.y = obs.crusherStartY;
-            this.matter.body.setPosition(obs.body, {
-              x: obs.crusherStartX,
-              y: obs.crusherStartY
-            });
-            obs.crusherActive = true;
-          }
-        }
-      }
-    });
   }
 
   /**
