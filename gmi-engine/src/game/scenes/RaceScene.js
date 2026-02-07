@@ -16,6 +16,7 @@ import { FinishTrackerUI } from '../rendering/FinishTrackerUI.js';
 import { BreakableManager } from '../managers/BreakableManager.js';
 import { CrushDetector } from '../managers/CrushDetector.js';
 import { SpecialObstacleManager } from '../managers/SpecialObstacleManager.js';
+import { drawObstacleGraphics } from '../rendering/ObstacleRenderer.js';
 
 export class RaceScene extends Phaser.Scene {
   constructor() {
@@ -433,7 +434,7 @@ export class RaceScene extends Phaser.Scene {
             if (obstacle && obstacle.breakable && !obstacle.destroyed && this.breakableManager) {
               this.breakableManager.handleCollision(obstacle, ball, (obs) => {
                 const color = obs.data?.color ? parseInt(obs.data.color.replace('#', ''), 16) : 0x4a5568;
-                this.drawObstacleGraphics(obs.graphics, {
+                drawObstacleGraphics(obs.graphics, {
                   ...obs.data,
                   health: obs.health,
                   maxHealth: obs.maxHealth
@@ -693,7 +694,7 @@ export class RaceScene extends Phaser.Scene {
           graphics = this.add.graphics();
           graphics.x = obs.x;
           graphics.y = obs.y;
-          this.drawObstacleGraphics(graphics, obs, color);
+          drawObstacleGraphics(graphics, obs, color);
         } else {
           this.obstacleLayer.fillStyle(color, 1);
           this.obstacleLayer.fillCircle(obs.x, obs.y, obs.radius);
@@ -722,7 +723,7 @@ export class RaceScene extends Phaser.Scene {
           graphics.y = centerY;
           // Apply rotation to graphics to match physics body
           graphics.rotation = angle;
-          this.drawObstacleGraphics(graphics, obs, color);
+          drawObstacleGraphics(graphics, obs, color);
         } else {
           this.obstacleLayer.fillStyle(color, 1);
           this.obstacleLayer.fillRect(obs.x, obs.y, obs.width, obs.height);
@@ -873,102 +874,6 @@ export class RaceScene extends Phaser.Scene {
         // No boss - default to finish zone win condition
         this.bossWinCondition = 'finish';
       }
-    }
-  }
-
-  /**
-   * Draw a single obstacle's graphics (for animated obstacles)
-   */
-  drawObstacleGraphics(graphics, obs, color) {
-    graphics.clear();
-    graphics.fillStyle(color, 1);
-
-    if (obs.type === 'circle') {
-      graphics.fillCircle(0, 0, obs.radius);
-
-      // Behavior indicators
-      if (obs.behavior === 'rotating') {
-        graphics.lineStyle(2, 0xffffff, 0.5);
-        graphics.strokeCircle(0, 0, obs.radius * 0.6);
-        // Rotation indicator line
-        graphics.lineBetween(0, 0, obs.radius * 0.8, 0);
-      } else if (obs.behavior === 'breakable') {
-        this.drawBreakableIndicatorOnGraphics(graphics, obs.health, obs.maxHealth);
-      } else if (obs.behavior === 'moving') {
-        graphics.lineStyle(2, 0xffffff, 0.5);
-        if (obs.moveDirection === 'horizontal') {
-          graphics.lineBetween(-10, 0, 10, 0);
-        } else {
-          graphics.lineBetween(0, -10, 0, 10);
-        }
-      }
-    } else {
-      const w = obs.width || 50;
-      const h = obs.height || 20;
-      graphics.fillRect(-w / 2, -h / 2, w, h);
-
-      // Behavior indicators
-      if (obs.behavior === 'rotating') {
-        graphics.lineStyle(2, 0xffffff, 0.5);
-        graphics.strokeCircle(0, 0, Math.min(w, h) * 0.3);
-        graphics.lineBetween(0, 0, Math.min(w, h) * 0.4, 0);
-      } else if (obs.behavior === 'breakable') {
-        this.drawBreakableIndicatorOnGraphics(graphics, obs.health, obs.maxHealth);
-      } else if (obs.behavior === 'moving') {
-        graphics.lineStyle(2, 0xffffff, 0.5);
-        if (obs.moveDirection === 'horizontal') {
-          graphics.lineBetween(-15, 0, 15, 0);
-        } else {
-          graphics.lineBetween(0, -15, 0, 15);
-        }
-      } else if (obs.behavior === 'crusher') {
-        // Crusher: draw danger stripes and arrow
-        graphics.lineStyle(3, 0x000000, 0.8);
-        const stripeGap = 8;
-        for (let i = -w/2; i < w/2; i += stripeGap * 2) {
-          graphics.lineBetween(i, -h/2, i + stripeGap, h/2);
-        }
-        // Arrow showing direction
-        graphics.lineStyle(2, 0xffffff, 1);
-        const arrowSize = 8;
-        switch (obs.crusherDirection) {
-          case 'down':
-            graphics.lineBetween(0, -h/4, 0, h/4);
-            graphics.lineBetween(0, h/4, -arrowSize, h/4 - arrowSize);
-            graphics.lineBetween(0, h/4, arrowSize, h/4 - arrowSize);
-            break;
-          case 'up':
-            graphics.lineBetween(0, h/4, 0, -h/4);
-            graphics.lineBetween(0, -h/4, -arrowSize, -h/4 + arrowSize);
-            graphics.lineBetween(0, -h/4, arrowSize, -h/4 + arrowSize);
-            break;
-          case 'right':
-            graphics.lineBetween(-w/4, 0, w/4, 0);
-            graphics.lineBetween(w/4, 0, w/4 - arrowSize, -arrowSize);
-            graphics.lineBetween(w/4, 0, w/4 - arrowSize, arrowSize);
-            break;
-          case 'left':
-            graphics.lineBetween(w/4, 0, -w/4, 0);
-            graphics.lineBetween(-w/4, 0, -w/4 + arrowSize, -arrowSize);
-            graphics.lineBetween(-w/4, 0, -w/4 + arrowSize, arrowSize);
-            break;
-        }
-      }
-    }
-  }
-
-  /**
-   * Draw breakable indicator with health
-   */
-  drawBreakableIndicatorOnGraphics(graphics, health, maxHealth) {
-    graphics.lineStyle(2, 0xffffff, 0.7);
-    // Draw crack lines based on damage
-    const damage = maxHealth - health;
-    if (damage >= 1) {
-      graphics.lineBetween(-5, -5, 5, 5);
-    }
-    if (damage >= 2) {
-      graphics.lineBetween(5, -5, -5, 5);
     }
   }
 
