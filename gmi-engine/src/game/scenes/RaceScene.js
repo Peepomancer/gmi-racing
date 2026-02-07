@@ -18,6 +18,7 @@ import { CrushDetector } from '../managers/CrushDetector.js';
 import { SpecialObstacleManager } from '../managers/SpecialObstacleManager.js';
 import { drawObstacleGraphics } from '../rendering/ObstacleRenderer.js';
 import { BallBoundaryManager } from '../managers/BallBoundaryManager.js';
+import { ZoneRenderer } from '../rendering/ZoneRenderer.js';
 
 export class RaceScene extends Phaser.Scene {
   constructor() {
@@ -59,6 +60,9 @@ export class RaceScene extends Phaser.Scene {
     this.crushDetector = null;
     this.specialObstacleManager = null;
     this.ballBoundaryManager = null;
+
+    // Renderers
+    this.zoneRenderer = null;
   }
 
   /**
@@ -225,6 +229,9 @@ export class RaceScene extends Phaser.Scene {
     this.bgLayer = this.add.graphics();
     this.obstacleLayer = this.add.graphics();
     this.finishLayer = this.add.graphics();
+
+    // Initialize renderers (after graphics layers exist)
+    this.zoneRenderer = new ZoneRenderer(this);
 
     // Generate initial map
     this.generateMap();
@@ -776,7 +783,7 @@ export class RaceScene extends Phaser.Scene {
 
     // Draw start zone if from editor
     if (mapData.startZone) {
-      this.drawStartZone(mapData.startZone);
+      this.zoneRenderer.drawStartZone(mapData.startZone);
     }
 
     // Store finish zone from editor map
@@ -784,7 +791,7 @@ export class RaceScene extends Phaser.Scene {
 
     // Draw finish line/zone
     const finishY = mapData.finishY || 60;
-    this.drawFinishLine(finishY);
+    this.zoneRenderer.drawFinishLine(finishY);
     this.finishY = finishY;
 
     // Store spawn info
@@ -880,22 +887,6 @@ export class RaceScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * Draw start zone indicator
-   */
-  drawStartZone(zone) {
-    this.bgLayer.fillStyle(0x00ff88, 0.15);
-    this.bgLayer.fillRect(zone.x, zone.y, zone.width, zone.height);
-
-    this.bgLayer.lineStyle(2, 0x00ff88, 0.5);
-    // Dashed border
-    const dashLength = 10;
-    for (let i = zone.x; i < zone.x + zone.width; i += dashLength * 2) {
-      this.bgLayer.lineBetween(i, zone.y, Math.min(i + dashLength, zone.x + zone.width), zone.y);
-      this.bgLayer.lineBetween(i, zone.y + zone.height, Math.min(i + dashLength, zone.x + zone.width), zone.y + zone.height);
-    }
-  }
-
   createWalls() {
     const w = this.gameWidth;
     const h = this.gameHeight;
@@ -918,76 +909,6 @@ export class RaceScene extends Phaser.Scene {
     this.obstacleLayer.fillStyle(0x2d3748, 1);
     this.obstacleLayer.fillRect(0, 0, 10, h);
     this.obstacleLayer.fillRect(w - 10, 0, 10, h);
-  }
-
-  drawFinishLine(finishY) {
-    // If we have a finish zone from editor, draw it as a zone
-    if (this.finishZone) {
-      this.drawFinishZone(this.finishZone);
-      return;
-    }
-
-    // Fallback: draw checkered line for procedural maps
-    const tileSize = 20;
-    const cols = Math.ceil(this.gameWidth / tileSize);
-
-    for (let col = 0; col < cols; col++) {
-      for (let row = 0; row < 2; row++) {
-        const isWhite = (col + row) % 2 === 0;
-        this.finishLayer.fillStyle(isWhite ? 0xffffff : 0x000000, 1);
-        this.finishLayer.fillRect(col * tileSize, finishY + row * tileSize, tileSize, tileSize);
-      }
-    }
-
-    if (this.finishText) this.finishText.destroy();
-    this.finishText = this.add.text(this.gameWidth / 2, finishY - 15, 'FINISH', {
-      fontSize: '16px',
-      color: '#000000',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-  }
-
-  /**
-   * Draw finish zone with checkered pattern
-   */
-  drawFinishZone(zone) {
-    const tileSize = 15;
-    const cols = Math.ceil(zone.width / tileSize);
-    const rows = Math.ceil(zone.height / tileSize);
-
-    // Draw checkered pattern inside the zone
-    for (let col = 0; col < cols; col++) {
-      for (let row = 0; row < rows; row++) {
-        const isWhite = (col + row) % 2 === 0;
-        this.finishLayer.fillStyle(isWhite ? 0xffffff : 0x111111, 0.9);
-
-        const x = zone.x + col * tileSize;
-        const y = zone.y + row * tileSize;
-        const w = Math.min(tileSize, zone.x + zone.width - x);
-        const h = Math.min(tileSize, zone.y + zone.height - y);
-
-        this.finishLayer.fillRect(x, y, w, h);
-      }
-    }
-
-    // Red border
-    this.finishLayer.lineStyle(3, 0xff4444, 1);
-    this.finishLayer.strokeRect(zone.x, zone.y, zone.width, zone.height);
-
-    // FINISH label
-    if (this.finishText) this.finishText.destroy();
-    this.finishText = this.add.text(
-      zone.x + zone.width / 2,
-      zone.y + zone.height / 2,
-      'FINISH',
-      {
-        fontSize: '14px',
-        color: '#ff4444',
-        fontStyle: 'bold',
-        backgroundColor: '#000000',
-        padding: { x: 5, y: 2 }
-      }
-    ).setOrigin(0.5);
   }
 
   createBalls() {
